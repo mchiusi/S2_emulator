@@ -54,8 +54,8 @@ def create_plot(objects, step, ev, args, clusters=[]):
               'clustering': (step, cl) }
     if args.col or args.phi: create_heatmap(heatmap, ev, *step_[step]) 
     if args.performance: return calculate_shift(heatmap, ev)
-    if args.thr_seed   : return [len(seed), ev.eta_gen, ev.pT_gen]
-    if args.cl_energy  : return [cl, ev]
+    if args.thr_seed and seed: return [len(seed), ev.eta_gen, ev.pT_gen]
+    if (args.cl_energy or args.simulation) and cl: return {'emul_cl':cl, 'CMSSW_ev':ev}
 
 def hgcal_limits(ev):
     plt.axhline(y=(0.476/ev.LSB_r_z-440)/64, color='red', linestyle='--')
@@ -173,41 +173,44 @@ def plot_seeds(seeds, args):
 ############# Checking Cluster Energy ###################
 #########################################################
 
-def distance(bin_, gen):
-    r_z_bin, phi_bin = bin2coord(bin_[0]+0.5, bin_[1]+0.5)
-    eta_bin = -np.log(np.tan((r_z_bin*0.7/4096)/2))
+def distance(bin_, gen, in_bin=True):
+    if in_bin: 
+      r_z_bin, phi_bin = bin2coord(bin_[0]+0.5, bin_[1]+0.5)
+      eta_bin = -np.log(np.tan((r_z_bin*0.7/4096)/2))
+    else: 
+      eta_bin, phi_bin = bin_[0], bin_[1]
     return np.sqrt((eta_bin-gen.eta_gen)**2+(phi_bin-gen.phi_gen)**2)
 
-def plot_cluster_energy(seeds, args):
+def plot_cluster_energy(cl, args):
     clusters, eta_list, p_t_list = [], [], []
-    for cluster in seeds:
-      if len(cluster[0]) != 0: 
-        dist = [distance(cl, cluster[1]) for cl in [[cl[0], cl[1]] for cl in cluster[0]]]
-        clusters.append(cluster[0][dist.index(min(dist))][2])
-        eta_list.append(cluster[1].eta_gen)
-        p_t_list.append(cluster[1].pT_gen)
-    
+    for cluster in cl:
+      if cluster: 
+        dist = [distance(cl, cluster['CMSSW_ev']) for cl in [[cl[0], cl[1]] for cl in cluster['emul_cl']]]
+        clusters.append(cluster['emul_cl'][dist.index(min(dist))][2])
+        eta_list.append(cluster['CMSSW_ev'].eta_gen)
+        p_t_list.append(cluster['CMSSW_ev'].pT_gen)
+   
     plt.scatter(p_t_list, clusters) #, label=thr_list) 
     plt.title(args.pileup+' '+args.particles)
     plt.grid(linestyle='--')
     plt.xlabel(r'$p^{T}_{gen}$')
     plt.ylabel(r'$p^{T}_{cluster}$')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'scatter_pT_vs_cluster.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'scatter_pT_vs_cluster.png')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_scatter_pT_vs_cluster.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_scatter_pT_vs_cluster.png')
     plt.clf()
 
-    compute_ratio_cl(np.divide(clusters, p_t_list), p_t_list, args, 10)
+    compute_ratio_cl(np.divide(clusters, p_t_list), p_t_list, args, 'p_t', 10)
 
-def compute_ratio_cl(ratio, p_t, args, bin_n=10):
-    bin_edges = np.linspace(0, max(p_t), num=bin_n+1)
-    indices = np.digitize(p_t, bin_edges) - 1
+def compute_ratio_cl(ratio, bin_variable, args, variable='p_t', bin_n=10):
+    bin_edges = np.linspace(0, max(bin_variable), num=bin_n+1)
+    indices = np.digitize(bin_variable, bin_edges) - 1
 
     result, err = {}, {}
     for index in range(bin_n):
       bin_indices = np.where(indices == index)[0]
       ratio_bin = [ratio[i] for i in bin_indices]
       result[index] = np.mean(ratio_bin) if len(ratio_bin)>0 else 0
-      err[index]    = np.std(ratio_bin) if len(ratio_bin)>0 else 0
+      err[index]    = np.std(ratio_bin)/np.sqrt(len(ratio_bin)) if len(ratio_bin)>0 else 0
 
     thr = int(cfg['thresholdMaximaParam_a'][0])
     plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, result.values(), 
@@ -215,13 +218,39 @@ def compute_ratio_cl(ratio, p_t, args, bin_n=10):
                  fmt='o', capsize=3, label=str(thr)+' GeV', alpha=0.7) 
     plt.legend()
     plt.grid()
-    plt.ylabel(r'$p_{T}^{cluster}/p_{T}^{gen}$')
+    plt.ylabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if args.cl_energy else r'$p_{T}^{emulator}/p_{T}^{CMSSW}$' if variable=='p_t' \
+               else r'$n_{cluster}^{emulator}/n_{cluster}^{CMSSW}$')
     plt.xlabel(r'$p_{T}^{gen}$')
-    plt.title('Calibration factors pT '+args.particles+' '+args.pileup)
+    title = args.particles+' '+args.pileup
+    title += ' Calibration factors per pT bin ' if args.cl_energy else ' Comparison Emulator vs CMSSW '+variable
+    plt.title(title)
     thresholds = '_a'+'_'.join(map(str, [int(i*10) for i in cfg['thresholdMaximaParam_a']]))
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_ratio_pT_thr'+str(thr)+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_ratio_pT_thr'+str(thr)+'.png')
+    plt.savefig('plots/'+title.replace(" ", "_")+'_thr'+str(thr)+'.pdf')
+    plt.savefig('plots/'+title.replace(" ", "_")+'_thr'+str(thr)+'.png')
     plt.clf()
+
+#########################################################
+########### Comparison with CMSSW Simulation ############
+#########################################################
+
+def plot_simul_comparison(clusters, args):
+    n_cl_emu, n_cl_CMSSW, p_t_emu, p_t_CMSSW = [], [], [], []
+    for cl_ev in clusters:
+      if cl_ev:
+        n_cl_emu.append(len(cl_ev['emul_cl']))
+        n_cl_CMSSW.append(len(cl_ev['CMSSW_ev'].cluster.good_cl3d_pt))
+        # if n_cl_emu[-1] != n_cl_CMSSW[-1]: print("Different clusters identified ", n_cl_emu[-1], n_cl_CMSSW[-1])
+        dist = [distance(cl, cl_ev['CMSSW_ev']) for cl in [[cl[0], cl[1]] for cl in cl_ev['emul_cl']]]
+        p_t_emu.append(cl_ev['emul_cl'][dist.index(min(dist))][2])
+
+        dist = [distance(cl, cl_ev['CMSSW_ev'], 0) for cl in [[cl_ev['CMSSW_ev'].cluster.good_cl3d_eta[cl], \
+                cl_ev['CMSSW_ev'].cluster.good_cl3d_phi[cl]] for cl in range(n_cl_CMSSW[-1])]]
+        p_t_CMSSW.append(cl_ev['CMSSW_ev'].cluster.good_cl3d_pt[dist.index(min(dist))])
+    p_t_gen = [cl['CMSSW_ev'].pT_gen for cl in clusters if cl]
+
+    # print(n_cl_emu, n_cl_CMSSW, p_t_gen, p_t_emu, p_t_CMSSW)
+    compute_ratio_cl(np.divide(n_cl_emu, n_cl_CMSSW), p_t_gen, args, 'counts', 10)
+    compute_ratio_cl(np.divide(p_t_emu, p_t_CMSSW), p_t_gen, args, 'p_t', 10)
 
 
 ## not used ##

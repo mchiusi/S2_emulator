@@ -22,11 +22,11 @@ def run_algorithm(config, event, args, result):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
+    # if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
+    #i if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)
@@ -45,6 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--performance', action='store_true', help='Create performance plots: distance gen_particle/max_TC')
     parser.add_argument('--thr_seed',    action='store_true', help='Create efficiency plots post seeding')
     parser.add_argument('--cl_energy',   action='store_true', help='Create plot of gen_pt vs recontructed energy')
+    parser.add_argument('--simulation',  action='store_true', help='Create plot comparing CMSSW simulated clusters w/ emulator')
     args = parser.parse_args()
 
     params = tool.define_map()
@@ -64,6 +65,7 @@ if __name__ == '__main__':
         config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), 0, 0)
         run_algorithm(config, event, args, results)
 
-    if args.performance: plot.produce_plots(results, args)
-    if args.thr_seed:    plot.plot_seeds(results, args)
-    if args.cl_energy:   plot.plot_cluster_energy(results, args)
+    if args.performance : plot.produce_plots(results, args)
+    if args.thr_seed    : plot.plot_seeds(results, args)
+    if args.cl_energy   : plot.plot_cluster_energy(results, args)
+    if args.simulation  : plot.plot_simul_comparison(results, args)
