@@ -199,32 +199,48 @@ def plot_cluster_energy(cl, args):
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_scatter_pT_vs_cluster.png')
     plt.clf()
 
-    compute_ratio_cl(np.divide(clusters, p_t_list), p_t_list, args, 'p_t', 10)
+    compute_ratio_cl(clusters, p_t_list, args, 'p_t', 10)
 
-def compute_ratio_cl(ratio, bin_variable, args, variable='p_t', bin_n=10):
-    bin_edges = np.linspace(0, max(bin_variable), num=bin_n+1)
-    indices = np.digitize(bin_variable, bin_edges) - 1
+def compute_ratio_cl(num, den, args, variable='p_t', bin_n=10, binning=None):
+    if binning is None: binning = den
+    ratio = np.divide(num, den)
 
-    result, err = {}, {}
+    bin_edges = np.linspace(0, max(binning), num=bin_n+1)
+    indices = np.digitize(binning, bin_edges) - 1
+
+    result, err, num_, den_ = {}, {}, {}, {}
     for index in range(bin_n):
-      bin_indices = np.where(indices == index)[0]
-      ratio_bin = [ratio[i] for i in bin_indices]
+      bin_idx = np.where(indices == index)[0]
+      ratio_bin, num_bin, den_bin = [ratio[i] for i in bin_idx], [num[i] for i in bin_idx], [den[i] for i in bin_idx]
       result[index] = np.mean(ratio_bin) if len(ratio_bin)>0 else 0
       err[index]    = np.std(ratio_bin)/np.sqrt(len(ratio_bin)) if len(ratio_bin)>0 else 0
+      num_[index], den_[index] = np.sum(num_bin), np.sum(den_bin)
 
     thr = int(cfg['thresholdMaximaParam_a'][0])
-    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, result.values(), 
+
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 10), gridspec_kw={'height_ratios': [3, 2]})
+    if variable == 'clusters': 
+      ax1.stairs(num_.values(), bin_edges, alpha=0.7, fill=True, label='Emulator' if args.simulation else 'Cluster')
+      ax1.stairs(den_.values(), bin_edges, alpha=0.7, fill=True, label='CMSSW' if args.simulation else r'$p_{T}^{gen}$', color='orange')
+      ax1.set_ylabel('Number of identified clusters')
+    else: 
+      ax1.hist(num, bin_edges, alpha=0.7, fill=True, label='Emulator' if args.simulation else 'Cluster')
+      ax1.hist(den, bin_edges, alpha=0.7, fill=True, label='CMSSW' if args.simulation else r'$p_{T}^{gen}$', color='orange')
+      ax1.set_ylabel(r'$p^{cluster}_{T}$ distribution')
+    ax1.grid(linestyle='--')
+    ax1.legend()
+
+    ax2.errorbar((bin_edges[1:] + bin_edges[:-1])/2, result.values(), 
                  yerr=np.array(list(zip(err.values(), err.values()))).T, xerr=(bin_edges[1] - bin_edges[0])/2,
                  fmt='o', capsize=3, label=str(thr)+' GeV', alpha=0.7) 
-    plt.legend()
-    plt.grid()
-    plt.ylabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if args.cl_energy else r'$p_{T}^{emulator}/p_{T}^{CMSSW}$' if variable=='p_t' \
-               else r'$n_{cluster}^{emulator}/n_{cluster}^{CMSSW}$')
-    plt.xlabel(r'$p_{T}^{gen}$')
-    title = args.particles+' '+args.pileup
-    title += ' Calibration factors per pT bin ' if args.cl_energy else ' Comparison Emulator vs CMSSW '+variable
-    plt.title(title)
-    thresholds = '_a'+'_'.join(map(str, [int(i*10) for i in cfg['thresholdMaximaParam_a']]))
+    ax2.set_ylabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if args.cl_energy else r'$p_{T}^{emulator}/p_{T}^{CMSSW}$' if variable=='p_t' \
+                   else r'$n_{cluster}^{emulator}/n_{cluster}^{CMSSW}$')
+    ax2.set_xlabel(r'$p_{T}^{gen}$')
+    ax2.grid(linestyle='--')
+    ax2.legend()
+    
+    title = args.particles+' '+args.pileup + (' Calibration factors ' if args.cl_energy else ' Emulator vs CMSSW '+variable)
+    ax1.set_title(title)
     plt.savefig('plots/'+title.replace(" ", "_")+'_thr'+str(thr)+'.pdf')
     plt.savefig('plots/'+title.replace(" ", "_")+'_thr'+str(thr)+'.png')
     plt.clf()
@@ -233,25 +249,51 @@ def compute_ratio_cl(ratio, bin_variable, args, variable='p_t', bin_n=10):
 ########### Comparison with CMSSW Simulation ############
 #########################################################
 
+def distance_phi(bin_, phi_gen):
+    _, phi_bin = bin2coord(0, bin_+0.5)
+    return phi_bin-phi_gen
+
+def distance_eta(bin_, eta_gen):
+    r_z_bin, _ = bin2coord(bin_+0.5, 0)
+    eta_bin = -np.log(np.tan((r_z_bin*0.7/4096)/2))
+    return eta_bin-eta_gen
+
 def plot_simul_comparison(clusters, args):
     n_cl_emu, n_cl_CMSSW, p_t_emu, p_t_CMSSW = [], [], [], []
+    eta_emu, phi_emu, eta_CMSSW, phi_CMSSW = [], [], [], []
     for cl_ev in clusters:
       if cl_ev:
         n_cl_emu.append(len(cl_ev['emul_cl']))
         n_cl_CMSSW.append(len(cl_ev['CMSSW_ev'].cluster.good_cl3d_pt))
-        # if n_cl_emu[-1] != n_cl_CMSSW[-1]: print("Different clusters identified ", n_cl_emu[-1], n_cl_CMSSW[-1])
         dist = [distance(cl, cl_ev['CMSSW_ev']) for cl in [[cl[0], cl[1]] for cl in cl_ev['emul_cl']]]
+        eta_emu.append(distance_eta(cl_ev['emul_cl'][dist.index(min(dist))][0], cl_ev['CMSSW_ev'].eta_gen))
+        phi_emu.append(distance_phi(cl_ev['emul_cl'][dist.index(min(dist))][1], cl_ev['CMSSW_ev'].phi_gen))
         p_t_emu.append(cl_ev['emul_cl'][dist.index(min(dist))][2])
 
         dist = [distance(cl, cl_ev['CMSSW_ev'], 0) for cl in [[cl_ev['CMSSW_ev'].cluster.good_cl3d_eta[cl], \
                 cl_ev['CMSSW_ev'].cluster.good_cl3d_phi[cl]] for cl in range(n_cl_CMSSW[-1])]]
         p_t_CMSSW.append(cl_ev['CMSSW_ev'].cluster.good_cl3d_pt[dist.index(min(dist))])
+        eta_CMSSW.append(cl_ev['CMSSW_ev'].cluster.good_cl3d_eta[dist.index(min(dist))]-cl_ev['CMSSW_ev'].eta_gen)
+        phi_CMSSW.append(cl_ev['CMSSW_ev'].cluster.good_cl3d_phi[dist.index(min(dist))]-cl_ev['CMSSW_ev'].phi_gen)
     p_t_gen = [cl['CMSSW_ev'].pT_gen for cl in clusters if cl]
 
-    # print(n_cl_emu, n_cl_CMSSW, p_t_gen, p_t_emu, p_t_CMSSW)
-    compute_ratio_cl(np.divide(n_cl_emu, n_cl_CMSSW), p_t_gen, args, 'counts', 10)
-    compute_ratio_cl(np.divide(p_t_emu, p_t_CMSSW), p_t_gen, args, 'p_t', 10)
+    compute_ratio_cl(n_cl_emu, n_cl_CMSSW, args, 'clusters', 20, p_t_gen)
+    compute_ratio_cl(p_t_emu, p_t_CMSSW, args, 'p_t', 20, p_t_gen)
 
+    # cluster shift wrt gen particle
+    histo_2D_position(eta_emu, phi_emu, 'emu', args)
+    histo_2D_position(eta_CMSSW, phi_CMSSW, 'CMSSW', args)
+    histo_2D_position(np.subtract(eta_emu, eta_CMSSW), np.subtract(phi_emu, phi_CMSSW), 'comparison', args)
+
+def histo_2D_position(x_data, y_data, title, args, bins=(20,20), cmap=white_viridis):
+    plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
+    plt.colorbar()
+    plt.title(r'Difference in $\eta$ and $\phi$ emulation vs CMSSW' if title=='comparison' else 'Comparison gen particle position w/'+title)
+    plt.xlabel(r'$\eta_{emulator}$' if title=='emu' else r'$\eta_{CMSSW}$' if title=='CMSSW' else r'$\Delta\eta$')
+    plt.ylabel(r'$\phi_{emulator}$' if title=='emu' else r'$\phi_{CMSSW}$' if title=='CMSSW' else r'$\Delta\phi$')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+ title + '.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+ title + '.png')
+    plt.clf()
 
 ## not used ##
 def create_plot_py(objects, ev, args):
