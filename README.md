@@ -45,6 +45,9 @@ python run_emulator.py -n 100 --thr_seed
 
 # to specified the particles (photons or pions) and pileup (0 or 200)
 python run_emulator.py -n 100 --pileup PU0 --particles photons --thr_seed
+
+# to produce simulation vs emulation comparison plots starting from cluster properties
+python run_emulator.py -n 100 --plot --simulation
 ```
 Other options can be displayed using `python run_emulator.py --help`.
 Single particle plots and efficiency plots can be found [here](https://mchiusi.web.cern.ch/Emulator_seeding/).
