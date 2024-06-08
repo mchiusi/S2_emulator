@@ -215,7 +215,7 @@ void HGCalHistoSeeding::maximaFinder1D( HGCalHistogramCellSAPtrCollection& histo
   for( auto& hc : histogram ) lHistogram.push_back( std::make_shared<HGCalHistogramCell>( *hc ) );
 
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {  
-    auto width = config_.maximaWidths( iRow ); 
+    auto width = config_.maximaWidths( iRow ) + 4; 
     for ( unsigned int iColumn = 0; iColumn != config_.cColumns(); ++iColumn ) {
       const unsigned int binIndex = ( config_.cColumns() * iRow ) + iColumn;
 
@@ -302,7 +302,7 @@ void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogr
   const std::vector< int > Sign = { -1 , 1 };
   
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {   
-    auto width = config_.fanoutWidths( iRow ); 
+    auto width = config_.fanoutWidths( iRow ) + 4;  
     
     std::vector< unsigned int > lCols;
     
@@ -365,6 +365,6 @@ void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogr
     }
   }
   // for (const auto& i : histogram) {
-  //   if (i->maximaOffset() or i->left_ or i->right_) std::cout << "2D Max Fanout. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->maximaOffset() << std::endl;    
+  //   if (i->maximaOffset()==1+3) std::cout << "2D Max Fanout. R/Z: " << i->sortKey() << " Column " << i->index() << " Energy " << i->maximaOffset() << std::endl;    
   // }
 }

@@ -65,7 +65,7 @@ class EventData():
                              gen.good_genpart_energy[0])
 
         self.data_packer = None
-        self.LSB = 1/10000 # 100 keV
+        self.LSB = 1/1000 # 1000 keV
         self.LSB_r_z = 0.7/4096
         self.LSB_phi = np.pi/1944
         self.offset_phi = -0.8

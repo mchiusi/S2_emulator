@@ -28,6 +28,7 @@ pip install matplotlib
 pip install scipy
 pip install awkward
 pip install uproot
+pip install mplhep
 
 conda install gxx
 ```

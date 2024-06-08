@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 import cppyy
 cppyy.add_include_path(os.path.abspath(''))
@@ -11,7 +12,6 @@ import data_handle.tools as tool
 import data_handle.plot_tools as plot
 from   data_handle.event import provide_events
 import data_handle.geometry as geometry
-import numpy as np
 
 def run_algorithm(config, event, args, result):
     ''' Calling the emulator algorithm in all its steps '''
@@ -22,11 +22,11 @@ def run_algorithm(config, event, args, result):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    # if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
+    if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
-    #i if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
+    if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
 
     clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters)
@@ -46,8 +46,10 @@ if __name__ == '__main__':
     parser.add_argument('--thr_seed',    action='store_true', help='Create efficiency plots post seeding')
     parser.add_argument('--cl_energy',   action='store_true', help='Create plot of gen_pt vs recontructed energy')
     parser.add_argument('--simulation',  action='store_true', help='Create plot comparing CMSSW simulated clusters w/ emulator')
+    parser.add_argument('--plot_json',   action='store_true', help='Not process data, just plot json in plots/data')
     args = parser.parse_args()
 
+    if args.plot_json: plot.plotting_json(args); sys.exit()
     params = tool.define_map()
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
 
@@ -55,11 +57,11 @@ if __name__ == '__main__':
     events = provide_events(args.n, args.particles, args.pileup)
     xml_data, xml_MB = geometry.read_xml(), geometry.MB_geometry()
     for idx, event in enumerate(events):
+      if args.pileup=='PU200' and event.pT_gen < 20: continue
       if idx % 50 == 0: print('Processing event', idx)
-      if args.n <= 20: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
+      if args.n <= 40: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
                               event.event, event.eta_gen, event.phi_gen, event.pT_gen))
 
-      # if (event.pT_gen < 10): continue
       event._data_packer(args, xml_data, xml_MB)
       for thr_a in params['thresholdMaximaParam_a']:
         config.setThresholdMaximaConstants(params['cRows'], int(thr_a/event.LSB), 0, 0)
