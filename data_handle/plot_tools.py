@@ -1,12 +1,12 @@
 import matplotlib.pyplot as plt
+import matplotlib.cm
 from matplotlib.colors import LinearSegmentedColormap
-from scipy.stats import binomtest
+import scipy.stats as stats
+from scipy.optimize import curve_fit
 import numpy as np
 import yaml
 import json
-
 import mplhep
-plt.style.use(mplhep.style.CMS)
 
 white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
     (0,    '#ffffff'),
@@ -53,7 +53,7 @@ def create_plot(objects, step, ev, args, clusters=[]):
     if len([i[3] for i in seed if i[3] < 0.05]) == 3:
         print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
         create_heatmap(heatmap, step, ev, seed)
-  
+
     step_ = {'unpacking': ("columns_" + step if args.col else step, []),
              'seeding': (step, seed),
              'clustering': (step, [[cl.sortKey_, cl.sortKey2_, cl.e_.value_*ev.LSB] for cl in clusters]) }
@@ -94,7 +94,7 @@ def create_heatmap(heatmap, gen, title, markers=[]):
                 color='red', marker='x', s=50)
     add_markers(markers, title)
     plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
-    plt.grid(linestyle='--')
+    plt.grid()
     hgcal_limits(gen)
     plt.savefig(f'plots/single_events/{gen.event}_{title}.pdf')
     plt.savefig(f'plots/single_events/{gen.event}_{title}.png')
@@ -134,7 +134,7 @@ def compute_efficiency_plots(seeds, variable, thr, bin_n=10):
       k, n = sum(1 for x in seeds_bin if x >= 1), len(seeds_bin)
       if n == 0: eff[index], lo_err[index], up_err[index] = 0, 0, 0; continue
 
-      result = binomtest(k, n, p=k/n)
+      result = stats.binomtest(k, n, p=k/n)
       eff[index] = k/n
       lo_err[index] = k/n - result.proportion_ci(confidence_level=0.95).low
       up_err[index] = result.proportion_ci(confidence_level=0.95).high - k/n
@@ -208,6 +208,17 @@ def scatter_cluster_energy(cl, args):
 ########### Comparison with CMSSW Simulation ############
 #########################################################
 
+def gaussian(x, A, mu, s):
+    return A * np.exp(-((x-mu)**2)/(2*s**2))
+
+def fit_response(data, bin_width = 0.025):
+    bin_edges = np.arange(min(data), max(data) + bin_width, bin_width)
+    counts, bin_edges = np.histogram(data, bins=bin_edges, density=False)
+    bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+    popt, pcov = curve_fit(gaussian, bin_centers, counts, [max(counts), np.mean(data), np.std(data)])
+    amplitude, mean, std = popt
+    return abs(std)/mean, np.sqrt(pcov[2, 2])/mean
+
 def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[]):
     bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
     indices = np.digitize(gen, bin_edges) - 1
@@ -218,6 +229,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       bin_idx = np.where(indices == index)[0]
       resp_bin_emu, resp_bin_simul   = ([emu[i]/gen[i] for i in bin_idx], [simul[i]/gen[i] for i in bin_idx]) if var=='pT' else \
                                        ([emu[i]/pt[i]  for i in bin_idx], [simul[i]/pt[i]  for i in bin_idx]) if var=='pT_eta' else \
+                                       ([emu[i] for i in bin_idx], [simul[i] for i in bin_idx]) if var=='n_cl_pt' or var=='n_cl_eta' else \
                                        ([emu[i]-gen[i] for i in bin_idx], [simul[i]-gen[i] for i in bin_idx])
 
       resp_emu[index]       = np.mean(resp_bin_emu) if len(resp_bin_emu)>0 else 0
@@ -229,58 +241,69 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       err_resol_emu[index]   = np.std(resp_bin_emu)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_emu)) if len(resp_bin_emu)>1 else 0
       resol_simul[index]     = np.std(resp_bin_simul)/np.mean(resp_bin_simul) if len(resp_bin_simul)>1 else 0
       err_resol_simul[index] = np.std(resp_bin_simul)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_simul)) if len(resp_bin_simul)>1 else 0
-      # if var=='eta' or var=='phi': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
+    
+      if args.fit_resp and (var == 'pT' or var == 'pT_eta'): 
+        resol_emu[index], err_resol_emu[index] = fit_response(resp_bin_emu)
+        resol_simul[index], err_resol_simul[index] = fit_response(resp_bin_simul)
+        # if var == 'pT': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
 
     # plotting
-    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resp_emu.values(), yerr=np.array(list(zip(err_resp_emu.values(), err_resp_emu.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label='emulation', alpha=0.7) 
-    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resp_simul.values(), yerr=np.array(list(zip(err_resp_simul.values(), err_resp_simul.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label='simulation', alpha=0.7) 
-    plt.ylabel(r'$\phi^{cluster}-\phi^{gen}$' if var=='phi' else r'$\eta^{cluster}-\eta^{gen}$' if var=='eta' else r'$p_{T}^{cluster}/p_{T}^{gen}$')
-    plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
+    plt.style.use(mplhep.style.CMS)
+    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resp_emu.values(), 
+                 yerr=np.array(list(zip(err_resp_emu.values(), err_resp_emu.values()))).T,
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='emulation') 
+    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resp_simul.values(), 
+                 yerr=np.array(list(zip(err_resp_simul.values(), err_resp_simul.values()))).T,
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='simulation') 
+    plt.ylabel(r'$\phi^{cluster}-\phi^{gen}$' if var=='phi' else r'$\eta^{cluster}-\eta^{gen}$' if var=='eta' else \
+               r'$<cluster>$' if var=='n_cl_pt' or var=='n_cl_eta' else r'$p_{T}^{cluster}/p_{T}^{gen}$')
+    plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' or var=='n_cl_pt' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
     mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)
     plt.legend()
-    plt.grid(linestyle='--')
+    plt.grid()
     plt.tight_layout()
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'.pdf')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'.png')
     plt.clf()
 
-    if var=='eta' or var=='phi': return
-    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resol_emu.values(), yerr=np.array(list(zip(err_resol_emu.values(), err_resol_emu.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label='emulation', alpha=0.7) 
-    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resol_simul.values(), yerr=np.array(list(zip(err_resol_simul.values(), err_resol_simul.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label='simulation', alpha=0.7) 
+    if var=='n_cl_pt' or var=='n_cl_eta' or var=='eta' or var=='phi': return
+    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resol_emu.values(), 
+                 yerr=np.array(list(zip(err_resol_emu.values(), err_resol_emu.values()))).T,
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='emulation') 
+    plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resol_simul.values(), 
+                 yerr=np.array(list(zip(err_resol_simul.values(), err_resol_simul.values()))).T,
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='simulation') 
     plt.ylabel(r'$\sigma^{cluster}/\mu^{cluster}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
     mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)
     plt.legend()
-    plt.grid(linestyle='--')
+    plt.grid()
     plt.ylim(bottom=0)
     plt.tight_layout()
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'.pdf')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'.png')
     plt.clf()
-   
+
 def plot_bin_distribution(resp_emu, resp_simul, var, index, args):
-    plt.hist(resp_emu, bins=5, alpha=0.5, label='emulation')
-    plt.hist(resp_simul, bins=5, alpha=0.5, label='simulation')
-    plt.xlabel(r'$\phi^{cluster}-\phi^{gen}$' if var=='phi' else r'$\eta^{cluster}-\eta^{gen}$')
+    plt.style.use(mplhep.style.CMS)
+    plt.hist(resp_emu, bins=10, alpha=0.5, label='emulation')
+    plt.hist(resp_simul, bins=10, alpha=0.5, label='simulation')
+    plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$') 
     plt.title(str(index)+' bin_number')
     plt.legend()
-    plt.grid(linestyle='--')
-    plt.tight_layout()
+    plt.grid()
+
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo_bin'+str(index)+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo_bin'+str(index)+'.png')
     plt.clf()
 
 def get_eta(r_z):
     return -np.log(np.tan(np.arctan(r_z)/2)) 
 
 def comparison_histo(emu, simul, args, var, bin_n, range_):
+    plt.style.use(mplhep.style.CMS)
     bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
-    plt.hist(emu,   bins=bin_edges, alpha=0.5, label='emulation')
-    plt.hist(simul, bins=bin_edges, alpha=0.5, label='simulation')
+    plt.hist(emu,   bins=bin_edges, alpha=.8, label='emulation')
+    plt.hist(simul, bins=bin_edges, alpha=.8, label='simulation')
     plt.legend()
     plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if var=='scale_pT' else r'$\phi^{cluster}-\phi^{gen}$' if var=='scale_phi' else \
                r'$\eta^{cluster}-\eta^{gen}$' if var=='scale_eta' else r'$p_{T}^{cluster}$ [GeV]' if var=='pT' else \
@@ -343,7 +366,8 @@ def plot_simul_comparison(clusters, args):
         'eta_CMSSW'   : eta_CMSSW,    'phi_CMSSW'     : phi_CMSSW,
         'eta_glob_emu': eta_glob_emu, 'eta_glob_CMSSW': eta_glob_CMSSW, 
         'phi_glob_emu': phi_glob_emu, 'phi_glob_CMSSW': phi_glob_CMSSW,
-        'p_t_gen': p_t_gen, 'eta_gen': eta_gen, 'phi_gen': phi_gen
+        'p_t_gen'     : p_t_gen,      'eta_gen'   : eta_gen, 'phi_gen': phi_gen,
+        'n_cl_emu'    : n_cl_emu,     'n_cl_CMSSW': n_cl_CMSSW
     }
 
     file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'.json'
@@ -367,6 +391,7 @@ def plotting_json(args):
     eta_glob_emu, eta_glob_CMSSW = plotting_dict['eta_glob_emu'], plotting_dict['eta_glob_CMSSW']
     phi_glob_emu, phi_glob_CMSSW = plotting_dict['phi_glob_emu'], plotting_dict['phi_glob_CMSSW']
     p_t_gen, eta_gen, phi_gen = plotting_dict['p_t_gen'], plotting_dict['eta_gen'], plotting_dict['phi_gen']
+    n_cl_emu, n_cl_CMSSW = plotting_dict['n_cl_emu'], plotting_dict['n_cl_CMSSW'] 
 
     # distributions
     comparison_histo(p_t_glob_emu, p_t_glob_CMSSW, args, 'pT',  20, [0, 200 if args.pileup=='PU0' else 100])
@@ -376,7 +401,7 @@ def plotting_json(args):
     scale_emu, scale_simul = np.divide(p_t_emu, p_t_gen), np.divide(p_t_CMSSW, p_t_gen)
     scale_emu_eta, scale_simul_eta = np.subtract(eta_emu, eta_gen), np.subtract(eta_CMSSW, eta_gen)
     scale_emu_phi, scale_simul_phi = np.subtract(phi_emu, phi_gen), np.subtract(phi_CMSSW, phi_gen)
-    comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 20, [0.5, 1.1])
+    comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0, 1.6])
     comparison_histo(scale_emu_eta, scale_simul_eta, args, 'scale_eta', 20, [-0.01, 0.01])
     comparison_histo(scale_emu_phi, scale_simul_phi, args, 'scale_phi', 20, [-0.02, 0.02])
 
@@ -385,12 +410,15 @@ def plotting_json(args):
     compute_responses(p_t_emu, p_t_CMSSW, eta_gen, args, 'pT_eta', 10, [1.6,2.8], p_t_gen)
     compute_responses(eta_emu, eta_CMSSW, eta_gen, args, 'eta', 10, [1.6,2.8])
     compute_responses(phi_emu, phi_CMSSW, phi_gen, args, 'phi', 10, [0.2,1.8])
+    compute_responses(n_cl_emu, n_cl_CMSSW, p_t_gen, args, 'n_cl_pt',  10, [0, 200 if args.pileup=='PU0' else 100])
+    compute_responses(n_cl_emu, n_cl_CMSSW, eta_gen, args, 'n_cl_eta', 10, [1.6,2.8])
 
     # cluster shift wrt gen particle
     histo_2D_position(scale_emu_eta,   scale_emu_phi,   'emulation',  args)
     histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
 
 def histo_2D_position(x_data, y_data, var, args, bins=(20,20), cmap=white_viridis):
+    plt.style.use(mplhep.style.CMS)
     plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
     plt.colorbar()
     mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)

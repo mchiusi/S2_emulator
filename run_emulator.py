@@ -47,6 +47,7 @@ if __name__ == '__main__':
     parser.add_argument('--cl_energy',   action='store_true', help='Create plot of gen_pt vs recontructed energy')
     parser.add_argument('--simulation',  action='store_true', help='Create plot comparing CMSSW simulated clusters w/ emulator')
     parser.add_argument('--plot_json',   action='store_true', help='Not process data, just plot json in plots/data')
+    parser.add_argument('--fit_resp',    action='store_true', help='Extract mean and std from fit (good for outliers)')
     args = parser.parse_args()
 
     if args.plot_json: plot.plotting_json(args); sys.exit()
