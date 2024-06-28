@@ -331,6 +331,7 @@ def plot_simul_comparison(clusters, args):
         if len(indices) == 0: continue
         index_  = indices[[cl_pt[i] for i in indices].index(max([cl_pt[i] for i in indices]))]
 
+        if (cl_ev['emul_cl'][index_][0]/cl_ev['CMSSW_ev'].phi_gen < 0.8): print(cl_ev['CMSSW_ev'].event)
         eta_emu.append(cl_ev['emul_cl'][index_][0])
         phi_emu.append(cl_ev['emul_cl'][index_][1])
         p_t_emu.append(cl_ev['emul_cl'][index_][2])

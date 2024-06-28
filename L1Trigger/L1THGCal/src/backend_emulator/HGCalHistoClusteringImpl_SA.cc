@@ -45,13 +45,15 @@ void HGCalHistoClusteringImplSA::runAlgorithm(HGCalLinkTriggerCellSAPtrCollectio
       std::cout << "Histo bin : " << bin->S() << std::endl;
   }
 
-  HGCalClusterSAPtrCollection clusters;
-  clustering_.runClustering(unpackedTCs, histogram, clusters);
+  HGCalTriggerCellSAShrPtrCollection clusters;
+  HGCalClusterSAPtrCollection protoClusters;
+  CentroidHelperPtrCollection readoutFlags;
+  clustering_.runClustering(unpackedTCs, histogram, clusters, readoutFlags, protoClusters);
 
-  for ( const auto& cluster : clusters ) {
-    if ( cluster->n_tc().value_ > 0 )
-      std::cout << "Cluster : " << cluster->n_tc() << std::endl;
-  }
+  // for ( const auto& cluster : protoClusters ) {
+  //   if ( protoClusters->n_tc_().value_ > 0 )
+  //     std::cout << "Cluster : " << protoClusters->n_tc_() << std::endl;
+  // }
  
   // Cluster properties  
   // clusterProperties( clusters );
@@ -91,13 +93,15 @@ void HGCalHistoClusteringImplSA::runAlgorithm()
       std::cout << "Histo bin : " << bin->S() << std::endl;
   }
 
-  HGCalClusterSAPtrCollection clusters;
-  clustering_.runClustering(unpackedTCs, histogram, clusters);
+  HGCalTriggerCellSAShrPtrCollection clusters;
+  HGCalClusterSAPtrCollection protoClusters;
+  CentroidHelperPtrCollection readoutFlags;
+  clustering_.runClustering(unpackedTCs, histogram, clusters, readoutFlags, protoClusters);
 
-  for ( const auto& cluster : clusters ) {
-    if ( cluster->n_tc().value_ > 0 )
-      std::cout << "Cluster : " << cluster->n_tc() << std::endl;
-  }
+  // for ( const auto& cluster : protoClusters ) {
+  //   if ( protoClusters->n_tc().value_ > 0 )
+  //     std::cout << "Cluster : " << protoClusters->n_tc() << std::endl;
+  // }
  
   // Cluster properties  
   // clusterProperties( clusters );

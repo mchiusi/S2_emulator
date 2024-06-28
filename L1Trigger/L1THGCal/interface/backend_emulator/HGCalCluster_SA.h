@@ -2,6 +2,7 @@
 #define L1Trigger_L1THGCal_HGCalCluster_SA_h
 
 #include "L1Trigger/L1THGCal/interface/backend_emulator/Binary.h"
+#include "HGCalTriggerCell_SA.h"
 
 #include <vector>
 #include <memory>
@@ -114,9 +115,11 @@ namespace l1thgcfirmware {
     void set_wz2( binary wz2 ) { wz2_ = wz2; }
     void set_wphi2( binary wphi2 ) { wphi2_ = wphi2; }
     void set_wroz2( binary wroz2 ) { wroz2_ = wroz2; }
-    void set_layerbits( binary layerbits ) { layerbits_ = layerbits; }
+    void set_layerbits(unsigned long int layerbits) { layerbits_ = layerbits; }
+    // void set_layerbits( binary layerbits ) { layerbits_ = layerbits; }
     void set_sat_tc( binary sat_tc ) { sat_tc_ = sat_tc; }
     void set_shapeq( binary shapeq ) { shapeq_ = shapeq; }
+    void add_constituent(HGCalTriggerCellSAShrPtr constituent) { constituents_.emplace_back(constituent); }
 
     // void set_Sigma_E_Quotient( unsigned long int Sigma_E_Quotient ) { Sigma_E_Quotient_ = Sigma_E_Quotient; } 
     // void set_Sigma_E_Fraction( unsigned long int Sigma_E_Fraction ) { Sigma_E_Fraction_ = Sigma_E_Fraction; }
@@ -167,10 +170,12 @@ namespace l1thgcfirmware {
     binary wz2() const { return wz2_; }
     binary wphi2() const { return wphi2_; }
     binary wroz2() const { return wroz2_; }
-    binary layerbits() const { return layerbits_; }
+    // binary layerbits() const { return layerbits_; }
+    unsigned long int layerbits() const { return layerbits_; }
     binary sat_tc() const { return sat_tc_; }
     binary shapeq() const { return shapeq_; }
 
+    HGCalTriggerCellSAShrPtrCollection& constituents() { return constituents_; }
     // unsigned long int Sigma_E_Quotient()  const { return Sigma_E_Quotient_; }
     // unsigned long int Sigma_E_Fraction() const { return Sigma_E_Fraction_; }
     // unsigned long int Mean_z_Quotient() const { return Mean_z_Quotient_; }
@@ -230,7 +235,8 @@ namespace l1thgcfirmware {
     binary wz2_;
     binary wphi2_;
     binary wroz2_;
-    binary layerbits_;
+    unsigned long int layerbits_;
+    // binary layerbits_;
     binary sat_tc_;
     binary shapeq_;
     
@@ -239,7 +245,7 @@ namespace l1thgcfirmware {
     bool lastFrame_;
     bool dataValid_;
     
-        
+    HGCalTriggerCellSAShrPtrCollection constituents_;    
     // unsigned long int Sigma_E_Quotient_;
     // unsigned long int Sigma_E_Fraction_;
     // unsigned long int Mean_z_Quotient_;

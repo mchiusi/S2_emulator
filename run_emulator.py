@@ -6,6 +6,7 @@ cppyy.add_include_path(os.path.abspath(''))
 cppyy.load_library('lib_configuration.so')
 cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/HGCalHistoClusteringImpl_SA.h')
 cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkTriggerCell_SA.h')
+cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/CentroidHelper.h')
 
 from cppyy.gbl import l1thgcfirmware
 import data_handle.tools as tool
@@ -28,8 +29,10 @@ def run_algorithm(config, event, args, result):
     seeding_.runSeeding(unpackedTCs, histogram)
     if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
 
-    clusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
-    clustering_.runClustering(unpackedTCs, histogram, clusters)
+    protoClusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
+    readoutFlags = l1thgcfirmware.CentroidHelperPtrCollection()
+    clusters = l1thgcfirmware.HGCalTriggerCellSAShrPtrCollection()
+    clustering_.runClustering(unpackedTCs, histogram, clusters, readoutFlags, protoClusters)
     if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, clusters))
     
 if __name__ == '__main__':

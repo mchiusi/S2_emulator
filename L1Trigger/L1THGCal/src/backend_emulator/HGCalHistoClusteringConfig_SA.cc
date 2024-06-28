@@ -55,7 +55,9 @@ ClusterAlgoConfig::ClusterAlgoConfig() :
   layerWeights_E_EM_core_{ (unsigned)(-1) , 0 , 0 , 0 , 0 , 0 , 0 , 256901 , 0 , 258212 , 0 , 259523 , 0 , 260833 , 0 , 262144 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0},
   layerWeights_E_H_early_{ (unsigned)(-1) , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 },
   correction_( 131071 ), // 0b011111111111111111
-  saturation_( (2<<19) - 1 )
+  saturation_( (2<<19) - 1 ),
+  nFifos_(20),
+  nColumnsPerFifo_(1)
 {
   initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
   initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
@@ -72,7 +74,8 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
                                      const std::vector<unsigned int>& depths, const std::vector<unsigned int>& triggerLayers,
                                      const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                                      const std::vector<unsigned int>& layerWeights_E_EM_core,
-                                     const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation) :
+                                     const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
+                                     unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin) :
   TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ),
   TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
   cClocks_(cClocks),
@@ -101,7 +104,10 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   layerWeights_E_EM_core_(layerWeights_E_EM_core),
   layerWeights_E_H_early_(layerWeights_E_H_early),
   correction_(correction),
-  saturation_(saturation)
+  saturation_(saturation),
+  nFifos_(nFifos),
+  nColumnsPerFifo_(nColumnsPerFifo),
+  firstSeedBin_(firstSeedBin)
 {
   initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
   initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
@@ -118,7 +124,8 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
                                      const std::vector<unsigned int>& depths, const std::vector<unsigned int>& triggerLayers,
                                      const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                                      const std::vector<unsigned int>& layerWeights_E_EM_core,
-                                     const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation) :
+                                     const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
+                                     unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin) :
   TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ),
   TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
   cClocks_(cClocks),
@@ -147,7 +154,10 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   layerWeights_E_EM_core_(layerWeights_E_EM_core),
   layerWeights_E_H_early_(layerWeights_E_H_early),
   correction_(correction),
-  saturation_(saturation)
+  saturation_(saturation),
+  nFifos_(nFifos),
+  nColumnsPerFifo_(nColumnsPerFifo),
+  firstSeedBin_(firstSeedBin)
 {
   initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
   initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
