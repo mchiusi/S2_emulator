@@ -29,6 +29,8 @@ namespace l1thgcfirmware {
                      l1thgcfirmware::CentroidHelperPtrCollection& readoutFlags) const;
     void triggerCellToCluster(const l1thgcfirmware::HGCalTriggerCellSAShrPtrCollection& clusteredTriggerCells,
                               l1thgcfirmware::HGCalClusterSAPtrCollection& clustersOut) const;
+    void clusterAccumulator( l1thgcfirmware::HGCalClusterSAPtrCollection& clusters, const l1thgcfirmware::HGCalHistogramCellSAPtrCollection& histogram ) const;
+    void clusterTree( l1thgcfirmware::HGCalClusterSAPtrCollection& clusters ) const;
 
     const l1thgcfirmware::ClusterAlgoConfig& config_;
   };

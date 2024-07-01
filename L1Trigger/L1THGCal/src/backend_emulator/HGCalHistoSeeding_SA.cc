@@ -40,7 +40,6 @@ void HGCalHistoSeeding::triggerCellToHistogramCell(const HGCalTriggerCellSAPtrCo
 
   histogramOut.clear();
   for (auto& tc : triggerCellsIn) {
-
     auto hc = std::make_unique<HGCalHistogramCell>(tc->clock() + latency,
                                         tc->index(),
                                         tc->energy(),
@@ -49,6 +48,8 @@ void HGCalHistoSeeding::triggerCellToHistogramCell(const HGCalTriggerCellSAPtrCo
                                         1,
                                         int((tc->rOverZ() - config_.rOverZHistOffset()) / config_.rOverZBinSize()),
                                         tc->lastFrame());
+    tc->setClock(hc->clock()); // added new version
+    tc->sortKey_ = hc->sortKey_; // added new version
     histogramOut.push_back(std::move(hc));
   }
 }
@@ -302,7 +303,7 @@ void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogr
   const std::vector< int > Sign = { -1 , 1 };
   
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {   
-    auto width = config_.fanoutWidths( iRow ) + 5;  
+    auto width = config_.fanoutWidths( iRow ) + 2;  
     
     std::vector< unsigned int > lCols;
     

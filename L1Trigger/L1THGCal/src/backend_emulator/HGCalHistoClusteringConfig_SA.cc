@@ -57,7 +57,9 @@ ClusterAlgoConfig::ClusterAlgoConfig() :
   correction_( 131071 ), // 0b011111111111111111
   saturation_( (2<<19) - 1 ),
   nFifos_(20),
-  nColumnsPerFifo_(1)
+  nColumnsPerFifo_(1),
+  nRowsForClustering_(1),
+  nColumnsForClustering_(1)
 {
   initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
   initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
@@ -75,7 +77,8 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
                                      const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                                      const std::vector<unsigned int>& layerWeights_E_EM_core,
                                      const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
-                                     unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin) :
+                                     unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin,
+                                     int nColumnsForClustering, int nRowsForClustering) :
   TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ),
   TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
   cClocks_(cClocks),
@@ -107,7 +110,9 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   saturation_(saturation),
   nFifos_(nFifos),
   nColumnsPerFifo_(nColumnsPerFifo),
-  firstSeedBin_(firstSeedBin)
+  firstSeedBin_(firstSeedBin),
+  nRowsForClustering_(nRowsForClustering),
+  nColumnsForClustering_(nColumnsForClustering)
 {
   initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
   initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );
@@ -125,7 +130,8 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
                                      const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                                      const std::vector<unsigned int>& layerWeights_E_EM_core,
                                      const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
-                                     unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin) :
+                                     unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin, 
+                                     int nColumnsForClustering, int nRowsForClustering) :
   TriggerCellDistributionLUT_( OpenMif("config_files/S2.mif") ),
   TriggerCellAddressLUT_( OpenMif("config_files/S2.TCaddr.mif") ),  
   cClocks_(cClocks),
@@ -157,7 +163,9 @@ ClusterAlgoConfig::ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs,
   saturation_(saturation),
   nFifos_(nFifos),
   nColumnsPerFifo_(nColumnsPerFifo),
-  firstSeedBin_(firstSeedBin)
+  firstSeedBin_(firstSeedBin),
+  nRowsForClustering_(nRowsForClustering),
+  nColumnsForClustering_(nColumnsForClustering)
 {
   initializeSmearingKernelConstants( cRows_, rOverZHistOffset_, rOverZBinSize_ );
   initializeThresholdMaximaConstants( cRows_, thresholdMaximaParam_a_, thresholdMaximaParam_b_, thresholdMaximaParam_c_  );

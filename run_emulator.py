@@ -33,7 +33,8 @@ def run_algorithm(config, event, args, result):
     readoutFlags = l1thgcfirmware.CentroidHelperPtrCollection()
     clusters = l1thgcfirmware.HGCalTriggerCellSAShrPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, clusters, readoutFlags, protoClusters)
-    if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, clusters))
+    print(protoClusters)
+    if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, protoClusters))
     
 if __name__ == '__main__':
     ''' python run_emulator.py -n 2 --pileup PU0 --particles photons '''

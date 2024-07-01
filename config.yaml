@@ -45,9 +45,11 @@ s2emu_config:
   layerWeights_E_H_early: [ 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ]
   correction: 131071 
   saturation: 1048575 # ( (2<<19) - 1 )
-  nFifos: 20
-  nColumnsPerFifo: 1
+  nFifos: 1
+  nColumnsPerFifo: 124
   firstSeedBin: 0
+  nRowsForClustering: 1 # 54 #124
+  nColumnsForClustering: 1 #124
 
 particles:
   base_path: /eos/home-m/mchiusi/s2_emulator/

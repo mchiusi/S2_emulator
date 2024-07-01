@@ -50,7 +50,8 @@ namespace l1thgcfirmware {
                       const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                       const std::vector<unsigned int>& layerWeights_E_EM_core,
                       const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
-                      unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin);
+                      unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin, 
+                      int nColumnsForClustering, int nRowsForClustering);
     ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs, unsigned int cInputs2, unsigned int cInt, unsigned int cColumns, unsigned int cRows,
                       unsigned int rOverZHistOffset, unsigned int rOverZBinSize, const std::vector<unsigned int>& kernelWidths,
                       const std::vector<unsigned int>& areaNormalizations,
@@ -62,7 +63,8 @@ namespace l1thgcfirmware {
                       const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
                       const std::vector<unsigned int>& layerWeights_E_EM_core,
                       const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
-                      unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin);
+                      unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin,
+                      int nColumnsForClustering, int nRowsForClustering);
     ~ClusterAlgoConfig() {};
 
     void setParameters() {}
@@ -193,12 +195,12 @@ namespace l1thgcfirmware {
     void setNColumnFifoVeto(const unsigned nColumnFifoVeto) { nColumnFifoVeto_ = nColumnFifoVeto; }
     unsigned int nColumnFifoVeto() const { return nColumnFifoVeto_; }
 
-    void setNColumnsForClustering(const unsigned nColumnsForClustering) {
+    void setNColumnsForClustering(const int nColumnsForClustering) {
       nColumnsForClustering_ = nColumnsForClustering;
     }
-    unsigned int nColumnsForClustering() const { return nColumnsForClustering_; }
+    int nColumnsForClustering() const { return nColumnsForClustering_; }
 
-    void setNRowsForClustering(const unsigned nRowsForClustering) { nRowsForClustering_ = nRowsForClustering; }
+    void setNRowsForClustering(const int nRowsForClustering) { nRowsForClustering_ = nRowsForClustering; }
     unsigned int nRowsForClustering() const { return nRowsForClustering_; }
 
     void setDeltaR2Thresholds(const std::vector<unsigned int> dr2Thresholds) { dr2Thresholds_ = dr2Thresholds; }
@@ -297,8 +299,8 @@ namespace l1thgcfirmware {
     unsigned int nTriggerLayers_;
     unsigned int nFifos_;
     unsigned int nColumnsPerFifo_;
-    unsigned int nColumnsForClustering_;
-    unsigned int nRowsForClustering_;
+    int nColumnsForClustering_;
+    int nRowsForClustering_;
     unsigned int firstSeedBin_;
     unsigned int nColumnFifoVeto_;
     std::vector<unsigned int> dr2Thresholds_;

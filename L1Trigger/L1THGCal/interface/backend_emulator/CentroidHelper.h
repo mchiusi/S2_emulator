@@ -12,7 +12,7 @@ namespace l1thgcfirmware {
         : CentroidHelper(clock, index, 0, 0, 0, 0, 0, dataValid) {}
     CentroidHelper(unsigned int clock,
                    unsigned int index,
-                   unsigned int column,
+                   int column,
                    unsigned int row,
                    unsigned int energy,
                    unsigned int X,
@@ -31,7 +31,7 @@ namespace l1thgcfirmware {
     // Getters
     unsigned int clock() const { return clock_; }
     unsigned int index() const { return index_; }
-    unsigned int column() const { return column_; }
+    int column() const { return column_; }
     unsigned int row() const { return row_; }
     unsigned int energy() const { return energy_; }
     unsigned int X() const { return x_; }
@@ -45,7 +45,7 @@ namespace l1thgcfirmware {
   private:
     unsigned int clock_;
     unsigned int index_;
-    unsigned int column_;
+    int column_;
     unsigned int row_;
     unsigned int energy_;
     unsigned int x_;
