@@ -48,8 +48,8 @@ s2emu_config:
   nFifos: 1
   nColumnsPerFifo: 124
   firstSeedBin: 0
-  nRowsForClustering: 1 # 54 #124
-  nColumnsForClustering: 1 #124
+  nRowsForClustering: 3 # 54 #124
+  nColumnsForClustering: 9 #124
 
 particles:
   base_path: /eos/home-m/mchiusi/s2_emulator/

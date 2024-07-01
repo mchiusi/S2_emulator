@@ -216,7 +216,7 @@ void HGCalHistoSeeding::maximaFinder1D( HGCalHistogramCellSAPtrCollection& histo
   for( auto& hc : histogram ) lHistogram.push_back( std::make_shared<HGCalHistogramCell>( *hc ) );
 
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {  
-    auto width = config_.maximaWidths( iRow ) + 5; 
+    auto width = config_.maximaWidths( iRow ) + 3; 
     for ( unsigned int iColumn = 0; iColumn != config_.cColumns(); ++iColumn ) {
       const unsigned int binIndex = ( config_.cColumns() * iRow ) + iColumn;
 
@@ -303,7 +303,7 @@ void HGCalHistoSeeding::maximaFanout( HGCalHistogramCellSAPtrCollection& histogr
   const std::vector< int > Sign = { -1 , 1 };
   
   for ( unsigned int iRow = 0; iRow != config_.cRows(); ++iRow ) {   
-    auto width = config_.fanoutWidths( iRow ) + 2;  
+    auto width = config_.fanoutWidths( iRow ) + 3;  
     
     std::vector< unsigned int > lCols;
     
