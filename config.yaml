@@ -9,7 +9,7 @@ s2emu_config:
   rOverZBinSize: 64
   kernelWidths: []
   areaNormalizations: []
-  thresholdMaximaParam_a: [1] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
+  thresholdMaximaParam_a: [1.4] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
   thresholdMaximaParam_b: [0] #, 100, 300, 500] # 2000
   thresholdMaximaParam_c: 0 # -80
   # thresholdMaximaConstants: []
@@ -48,8 +48,8 @@ s2emu_config:
   nFifos: 1
   nColumnsPerFifo: 124
   firstSeedBin: 0
-  nRowsForClustering: 3 # 54 #124
-  nColumnsForClustering: 9 #124
+  nRowsForClustering: 2 # 54 #124
+  nColumnsForClustering: 7 #124
 
 particles:
   base_path: /eos/home-m/mchiusi/s2_emulator/

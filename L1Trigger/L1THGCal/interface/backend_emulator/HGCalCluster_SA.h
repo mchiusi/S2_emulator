@@ -15,6 +15,7 @@ namespace l1thgcfirmware {
   typedef std::vector<HGCalClusterSAPtr> HGCalClusterSAPtrCollection;
   typedef std::shared_ptr<HGCalCluster> HGCalClusterSAShrPtr;
   typedef std::vector<HGCalClusterSAShrPtr> HGCalClusterSAShrPtrCollection;
+  typedef std::vector<HGCalClusterSAPtrCollection> HGCalClusterSAPtrCollections;
 }
 
 std::ostream& operator<< ( std::ostream& aStr , const l1thgcfirmware::HGCalCluster& aCell );

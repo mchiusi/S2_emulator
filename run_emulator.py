@@ -7,6 +7,7 @@ cppyy.load_library('lib_configuration.so')
 cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/HGCalHistoClusteringImpl_SA.h')
 cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/HGCalLinkTriggerCell_SA.h')
 cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/CentroidHelper.h')
+cppyy.include('L1Trigger/L1THGCal/interface/backend_emulator/HGCalHistoClusterProperties_SA.h')
 
 from cppyy.gbl import l1thgcfirmware
 import data_handle.tools as tool
@@ -20,6 +21,7 @@ def run_algorithm(config, event, args, result):
     linkUnpacking_ = l1thgcfirmware.HGCalLinkUnpacking(config)
     seeding_       = l1thgcfirmware.HGCalHistoSeeding(config)
     clustering_    = l1thgcfirmware.HGCalHistoClustering(config)
+    cl_properties_ = l1thgcfirmware.HGCalHistoClusterProperties(config)
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
@@ -29,11 +31,13 @@ def run_algorithm(config, event, args, result):
     seeding_.runSeeding(unpackedTCs, histogram)
     if args.plot: result.append(plot.create_plot(histogram, 'seeding', event, args))
 
-    protoClusters = l1thgcfirmware.HGCalClusterSAPtrCollection()
-    readoutFlags = l1thgcfirmware.CentroidHelperPtrCollection()
-    clusters = l1thgcfirmware.HGCalTriggerCellSAShrPtrCollection()
-    clustering_.runClustering(unpackedTCs, histogram, clusters, readoutFlags, protoClusters)
-    print(protoClusters)
+    protoClusters   = l1thgcfirmware.HGCalClusterSAPtrCollection()
+    cl_TriggerCells = l1thgcfirmware.HGCalTriggerCellSAShrPtrCollection()
+    readoutFlags    = l1thgcfirmware.CentroidHelperPtrCollection()
+    clustersOut     = l1thgcfirmware.HGCalClusterSAPtrCollection()
+    clustering_.runClustering(unpackedTCs, histogram, cl_TriggerCells, readoutFlags, protoClusters)
+    cl_properties_.runClusterProperties(protoClusters, readoutFlags, clustersOut)
+    print(clustersOut)
     if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, protoClusters))
     
 if __name__ == '__main__':

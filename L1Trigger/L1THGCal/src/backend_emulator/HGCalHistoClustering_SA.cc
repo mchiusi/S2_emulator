@@ -16,8 +16,8 @@ void HGCalHistoClustering::runClustering(const HGCalTriggerCellSAPtrCollection& 
   HGCalTriggerCellSAShrPtrCollection unclusteredTriggerCells;
   clusterizer(triggerCellsIn, histogramIn, clusteredTriggerCellsOut, unclusteredTriggerCells, readoutFlagsOut);
   triggerCellToCluster(clusteredTriggerCellsOut, protoClusters);
-  clusterAccumulator(protoClusters, histogramIn);
-  clusterTree(protoClusters);
+  // clusterAccumulator(protoClusters, histogramIn);
+  // clusterTree(protoClusters);
 }
 
 // Main implementation of clustering
@@ -153,7 +153,7 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
         unsigned int T = 0;
         // clusterizer 
         int clu_energy = 0;
-        std::cout << "Col considering " << a->column() << std::endl;
+        std::cout << "Considering seed " << a->column() << std::endl;
         for (int iCol = a->column() - config_.nColumnsForClustering();
              iCol < a->column() + config_.nColumnsForClustering() + 1;
              ++iCol) {
@@ -172,16 +172,28 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
             }
             for (auto& tc : triggerCellBuffers[iCol][row]) {
               clock[iCol] += 1;
-              unsigned int r1 = tc->rOverZ();
-              unsigned int r2 = a->Y();
-              int dR = r1 - r2;
-              unsigned int absDPhi = abs(int(tc->phi()) - int(a->X()));
-              unsigned int dR2 = dR * dR;
-              unsigned int cosTerm = (absDPhi > config_.nBinsCosLUT()) ? 2047 : config_.cosLUT(absDPhi);
+              double tc_phi = tc->phi_ * M_PI/1944;
+              double tc_x = tc->rOverZ_ * std::cos( tc_phi );
+              double tc_y = tc->rOverZ_ * std::sin( tc_phi );
+  
+              double hc_phi = a->X() * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
+              double hc_x = a->Y() * std::cos( hc_phi );
+              double hc_y = a->Y() * std::sin( hc_phi );
+       
+              double dx = tc_x - hc_x;
+              double dy = tc_y - hc_y;
+              
+              double dR2 = ( dx * dx ) + ( dy * dy );
+              // unsigned int r1 = tc->rOverZ();
+              // unsigned int r2 = a->Y();
+              // int dR = r1 - r2;
+              // unsigned int absDPhi = abs(int(tc->phi()) - int(a->X()));
+              // unsigned int dR2 = dR * dR;
+              // unsigned int cosTerm = (absDPhi > config_.nBinsCosLUT()) ? 2047 : config_.cosLUT(absDPhi);
 
-              const unsigned a = 128;   // 2^7
-              const unsigned b = 1024;  // 2^10
-              dR2 += int(r1 * r2 / a) * cosTerm / b;
+              // const unsigned a = 128;   // 2^7
+              // const unsigned b = 1024;  // 2^10
+              // dR2 += int(r1 * r2 / a) * cosTerm / b;
               tc->setClock(clock[iCol] + 1);
               if (clock[iCol] > T)
                 T = clock[iCol];
@@ -273,7 +285,7 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
       }
     }
   }
-  std::cout << "Clusterized step 2 " << cl_energy << std::endl;
+  std::cout << "Clusterized energy all seeds " << cl_energy << std::endl;
 }
 
 // Converts clustered TCs into cluster object (one for each TC) ready for accumulation
@@ -352,6 +364,7 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
   
   std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
   for( auto& x : clusters ){
+    std::cout << x->sortKey_ << std::endl;
     auto lKey = std::make_pair( x->sortKey_ , x->index_ );
     auto lIt = cluster_map.find( lKey );
     if ( lIt == cluster_map.end() ){
