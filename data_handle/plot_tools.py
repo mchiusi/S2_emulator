@@ -49,15 +49,17 @@ def create_plot(objects, step, ev, args, clusters=[]):
           seed.append([bin.sortKey(), bin.index(), bin.S()*ev.LSB, distance([bin.sortKey(), bin.index()],ev)])    
 
     cl = [[get_eta((cl.wroz_.value_/cl.w_.value_)*ev.LSB_r_z), (cl.wphi_.value_/cl.w_.value_)*ev.LSB_phi+ev.offset_phi, \
-           cl.e_.value_*ev.LSB] for cl in clusters]
+           cl.e_.value_*ev.LSB] for cl in clusters if cl.e_.value_>0]
     if len([i[3] for i in seed if i[3] < 0.05]) == 3:
         print(f'3 seeds found for event {ev.event}, (pT, \u03B7, \u03C6)=({ev.pT_gen:.0f}, {ev.eta_gen:.2f},{ev.phi_gen:.2f})') 
-        create_heatmap(heatmap, step, ev, seed)
+        create_heatmap(heatmap, step, ev, seed, args)
 
-    step_ = {'unpacking': ("columns_" + step if args.col else step, []),
+    step_ = {'unpacking': ("cols_" + step if args.col else step, []),
              'seeding': (step, seed),
-             'clustering': (step, [[cl.sortKey_, cl.sortKey2_, cl.e_.value_*ev.LSB] for cl in clusters]) }
-    if args.col or args.phi: create_heatmap(heatmap, ev, *step_[step]) 
+             'clustering': (step, [[int(((cl.wroz_.value_/cl.w_.value_)-440)/64), 
+                                    23+int(124*((cl.wphi_.value_/cl.w_.value_)*ev.LSB_phi+ev.offset_phi)/np.pi), 
+                                    cl.e_.value_*ev.LSB] for cl in clusters if cl.e_.value_>0]) }
+    if args.col or args.phi: create_heatmap(heatmap, ev, *step_[step], args) 
     if args.performance: return calculate_shift(heatmap, ev)
     if args.thr_seed and seed: return [len(seed), ev.eta_gen, ev.pT_gen]
     if (args.cl_energy or args.simulation) and cl: return {'emul_cl':cl, 'CMSSW_ev':ev}
@@ -81,7 +83,7 @@ def add_markers(markers, title):
         plt.scatter(marker[1], marker[0], color='green', marker='*', s=25, alpha=0.6)
         plt.text(marker[1], marker[0]+1.5, str(int(marker[2])), fontsize=8, va='center', ha='center')
 
-def create_heatmap(heatmap, gen, title, markers=[]):
+def create_heatmap(heatmap, gen, title, markers=[], args={}):
     plt.imshow(heatmap, cmap=white_viridis, origin='lower', aspect='auto')
     x_tick_labels = [int(val) for val in np.linspace(-30, 150, num=7)]
     y_tick_labels = ['{:.2f}'.format(val) for val in np.linspace(440*gen.LSB_r_z, (64**2+440)*gen.LSB_r_z, num=8)]
@@ -96,8 +98,8 @@ def create_heatmap(heatmap, gen, title, markers=[]):
     plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
     plt.grid()
     hgcal_limits(gen)
-    plt.savefig(f'plots/single_events/{gen.event}_{title}.pdf')
-    plt.savefig(f'plots/single_events/{gen.event}_{title}.png')
+    plt.savefig(f'plots/single_events/{args.particles}_{args.pileup}_{gen.event}_{title}.pdf')
+    plt.savefig(f'plots/single_events/{args.particles}_{args.pileup}_{gen.event}_{title}.png')
     plt.clf()
 
 def produce_plots(shift):
@@ -211,12 +213,14 @@ def scatter_cluster_energy(cl, args):
 def gaussian(x, A, mu, s):
     return A * np.exp(-((x-mu)**2)/(2*s**2))
 
-def fit_response(data, bin_width = 0.025):
+def fit_response(data, bin_width = 0.05):
+    if not data: return 0, 0
     bin_edges = np.arange(min(data), max(data) + bin_width, bin_width)
     counts, bin_edges = np.histogram(data, bins=bin_edges, density=False)
     bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
     popt, pcov = curve_fit(gaussian, bin_centers, counts, [max(counts), np.mean(data), np.std(data)])
     amplitude, mean, std = popt
+    if abs(std)/mean>0.5: print(data)
     return abs(std)/mean, np.sqrt(pcov[2, 2])/mean
 
 def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[]):
@@ -242,10 +246,22 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       resol_simul[index]     = np.std(resp_bin_simul)/np.mean(resp_bin_simul) if len(resp_bin_simul)>1 else 0
       err_resol_simul[index] = np.std(resp_bin_simul)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_simul)) if len(resp_bin_simul)>1 else 0
     
+      if args.eff_rms and (var == 'pT' or var == 'pT_eta'):
+        n_sigma = 1
+        eff_rms_emu   = [x for x in resp_bin_emu if (np.mean(resp_bin_emu) - n_sigma*np.std(resp_bin_emu)) <= x <= \
+                         (np.mean(resp_bin_emu) + n_sigma*np.std(resp_bin_emu))]
+        eff_rms_simul = [x for x in resp_bin_simul if (np.mean(resp_bin_simul) - n_sigma*np.std(resp_bin_simul)) <= x <= \
+                         (np.mean(resp_bin_simul) + n_sigma*np.std(resp_bin_simul))]
+        if var == 'pT': plot_bin_distribution(eff_rms_emu, eff_rms_simul, var, index, args)
+        resol_emu[index]       = np.std(eff_rms_emu)/np.mean(eff_rms_emu) if len(eff_rms_emu)>1 else 0
+        err_resol_emu[index]   = np.std(eff_rms_emu)/(np.sqrt(2*len(eff_rms_emu)-2)*np.mean(eff_rms_emu)) if len(eff_rms_emu)>1 else 0
+        resol_simul[index]     = np.std(eff_rms_simul)/np.mean(eff_rms_simul) if len(eff_rms_simul)>1 else 0
+        err_resol_simul[index] = np.std(eff_rms_simul)/(np.sqrt(2*len(eff_rms_simul)-2)*np.mean(eff_rms_simul)) if len(eff_rms_simul)>1 else 0
+
       if args.fit_resp and (var == 'pT' or var == 'pT_eta'): 
         resol_emu[index], err_resol_emu[index] = fit_response(resp_bin_emu)
         resol_simul[index], err_resol_simul[index] = fit_response(resp_bin_simul)
-        # if var == 'pT': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
+        # if var == 'pT_eta': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
 
     # plotting
     plt.style.use(mplhep.style.CMS)
@@ -258,7 +274,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
     plt.ylabel(r'$\phi^{cluster}-\phi^{gen}$' if var=='phi' else r'$\eta^{cluster}-\eta^{gen}$' if var=='eta' else \
                r'$<cluster>$' if var=='n_cl_pt' or var=='n_cl_eta' else r'$p_{T}^{cluster}/p_{T}^{gen}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' or var=='n_cl_pt' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
     plt.tight_layout()
@@ -275,7 +291,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
                  xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='simulation') 
     plt.ylabel(r'$\sigma^{cluster}/\mu^{cluster}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
     plt.ylim(bottom=0)
@@ -309,7 +325,7 @@ def comparison_histo(emu, simul, args, var, bin_n, range_):
                r'$\eta^{cluster}-\eta^{gen}$' if var=='scale_eta' else r'$p_{T}^{cluster}$ [GeV]' if var=='pT' else \
                r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$')
     plt.ylabel('Counts')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     if (var=='pT' or var=='eta' or var=='phi') and args.pileup=='PU200': plt.yscale('log')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo.pdf')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo.png')
@@ -371,7 +387,7 @@ def plot_simul_comparison(clusters, args):
         'n_cl_emu'    : n_cl_emu,     'n_cl_CMSSW': n_cl_CMSSW
     }
 
-    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'.json'
+    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'.:'
     with open(file_path, 'w') as f:
       json.dump(plotting_dict, f)
       print('Json file created in /plots/data')
@@ -402,7 +418,7 @@ def plotting_json(args):
     scale_emu, scale_simul = np.divide(p_t_emu, p_t_gen), np.divide(p_t_CMSSW, p_t_gen)
     scale_emu_eta, scale_simul_eta = np.subtract(eta_emu, eta_gen), np.subtract(eta_CMSSW, eta_gen)
     scale_emu_phi, scale_simul_phi = np.subtract(phi_emu, phi_gen), np.subtract(phi_CMSSW, phi_gen)
-    comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0, 1.6])
+    comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0.25, 1.25] if args.pileup=='PU0' else [0, 1.6])
     comparison_histo(scale_emu_eta, scale_simul_eta, args, 'scale_eta', 20, [-0.01, 0.01])
     comparison_histo(scale_emu_phi, scale_simul_phi, args, 'scale_phi', 20, [-0.02, 0.02])
 
@@ -422,7 +438,7 @@ def histo_2D_position(x_data, y_data, var, args, bins=(20,20), cmap=white_viridi
     plt.style.use(mplhep.style.CMS)
     plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
     plt.colorbar()
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles)
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.ylabel(r'$\phi^{emulation}-\phi^{gen}$'  if var=='emulation' else r'$\phi^{emulation}-\phi^{gen}$')
     plt.xlabel(r'$\eta^{simulation}-\eta^{gen}$' if var=='emulation' else r'$\eta^{simulation}-\eta^{gen}$')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+ var + '.pdf')
@@ -438,5 +454,5 @@ def create_plot_py(objects, ev, args):
         elif args.col: heatmap[define_bin(bin['rOverZ'])[0], 23+bin['column']] += bin['energy']*ev.LSB
 
     if args.performance: return calculate_shift(heatmap, ev) 
-    elif args.col or args.phi: create_heatmap(heatmap, 'columns_pre_unpacking' if args.col else 'pre_unpacking', ev)
+    elif args.col or args.phi: create_heatmap(heatmap, 'columns_pre_unpacking' if args.col else 'pre_unpacking', ev, args)
 

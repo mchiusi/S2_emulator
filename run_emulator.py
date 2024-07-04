@@ -25,7 +25,7 @@ def run_algorithm(config, event, args, result):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
+    # if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
@@ -37,8 +37,7 @@ def run_algorithm(config, event, args, result):
     clustersOut     = l1thgcfirmware.HGCalClusterSAPtrCollection()
     clustering_.runClustering(unpackedTCs, histogram, cl_TriggerCells, readoutFlags, protoClusters)
     cl_properties_.runClusterProperties(protoClusters, readoutFlags, clustersOut)
-    print(clustersOut)
-    if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, protoClusters))
+    if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, clustersOut))
     
 if __name__ == '__main__':
     ''' python run_emulator.py -n 2 --pileup PU0 --particles photons '''
@@ -56,6 +55,7 @@ if __name__ == '__main__':
     parser.add_argument('--simulation',  action='store_true', help='Create plot comparing CMSSW simulated clusters w/ emulator')
     parser.add_argument('--plot_json',   action='store_true', help='Not process data, just plot json in plots/data')
     parser.add_argument('--fit_resp',    action='store_true', help='Extract mean and std from fit (good for outliers)')
+    parser.add_argument('--eff_rms',     action='store_true', help='Extract mean and std from fit (good for outliers)')
     args = parser.parse_args()
 
     if args.plot_json: plot.plotting_json(args); sys.exit()
