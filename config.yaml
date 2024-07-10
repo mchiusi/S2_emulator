@@ -9,7 +9,7 @@ s2emu_config:
   rOverZBinSize: 64
   kernelWidths: []
   areaNormalizations: []
-  thresholdMaximaParam_a: [1.4] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
+  thresholdMaximaParam_a: [1] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
   thresholdMaximaParam_b: [0] #, 100, 300, 500] # 2000
   thresholdMaximaParam_c: 0 # -80
   # thresholdMaximaConstants: []
@@ -43,20 +43,21 @@ s2emu_config:
   layerWeights_E_EM: [ 1, 252969 , 0 , 254280 , 0 , 255590 , 0 , 256901 , 0 , 258212 , 0 , 259523 , 0 , 260833 , 0 , 262144 , 0 , 263455 , 0 , 264765 , 0 , 266076 , 0 , 267387 , 0 , 268698 , 0 , 270008 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ]
   layerWeights_E_EM_core: [ 1, 0 , 0 , 0 , 0 , 0 , 0 , 256901 , 0 , 258212 , 0 , 259523 , 0 , 260833 , 0 , 262144 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ]
   layerWeights_E_H_early: [ 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 1 , 1 , 1 , 1 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 , 0 ]
+  DeltaR2Threshold: 5000
   correction: 131071 
   saturation: 1048575 # ( (2<<19) - 1 )
-  nFifos: 1
-  nColumnsPerFifo: 124
+  nFifos: 124
+  nColumnsPerFifo: 1
   firstSeedBin: 0
-  nRowsForClustering: 2 # 54 #124
-  nColumnsForClustering: 7 #124
+  nRowsForClustering: 3
+  nColumnsForClustering: 8
 
 particles:
   base_path: /eos/home-m/mchiusi/s2_emulator/
   PU0:
     photons:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
-      file: SinglePhoton_Pt-2To200_Fall22_MiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1.root
+      file: SinglePhoton_Pt-2To200_Fall22_MiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1_new.root
     pions:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
       file: SinglePion_Pt-0To200_Phase2Fall22DRMiniAOD-noPU_24-05-02_emulator_realbcstc_v2-v1.root

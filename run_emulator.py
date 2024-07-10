@@ -25,7 +25,7 @@ def run_algorithm(config, event, args, result):
 
     unpackedTCs = l1thgcfirmware.HGCalTriggerCellSAPtrCollection()
     linkUnpacking_.runLinkUnpacking(event.data_packer, unpackedTCs);
-    # if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
+    if args.plot: result.append(plot.create_plot(unpackedTCs, 'unpacking', event, args))
 
     histogram = l1thgcfirmware.HGCalHistogramCellSAPtrCollection()
     seeding_.runSeeding(unpackedTCs, histogram)
@@ -46,6 +46,7 @@ if __name__ == '__main__':
     parser.add_argument('-n',          type=int, default=1,         help='Provide the number of events')
     parser.add_argument('--particles', type=str, default='photons', help='Choose the particle sample')
     parser.add_argument('--pileup',    type=str, default='PU0',     help='Choose the pileup - PU0 or PU200')
+    parser.add_argument('--tag',       type=str, default='',        help='Name to make unique json files')
     parser.add_argument('--plot',        action='store_true', help='Create plots')
     parser.add_argument('--col',         action='store_true', help='Create plots using column numbers')
     parser.add_argument('--phi',         action='store_true', help='Create plots using phi coordinates')
@@ -66,6 +67,7 @@ if __name__ == '__main__':
     events = provide_events(args.n, args.particles, args.pileup)
     xml_data, xml_MB = geometry.read_xml(), geometry.MB_geometry()
     for idx, event in enumerate(events):
+      # if event.event not in [185427, 195146, 196557, 201350, 202415, 202695, 37099, 208156, 208324, 209454]: continue # 184363
       if args.pileup=='PU200' and event.pT_gen < 20: continue
       if idx % 50 == 0: print('Processing event', idx)
       if args.n <= 40: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(

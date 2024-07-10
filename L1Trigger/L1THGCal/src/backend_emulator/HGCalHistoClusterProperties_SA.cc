@@ -63,7 +63,7 @@ void HGCalHistoClusterProperties::clusterSum(const HGCalClusterSAPtrCollection& 
   }
 
   for (auto& sum : sums) {
-    std::cout << sum.second->sortKey_ << " clusterSum final " << sum.second->e_.value_ << std::endl;
+    // if (sum.second->w_.value_ != 0) {std::cout << sum.second->wroz_.value_/sum.second->w_.value_ << " phi " << sum.second->wphi_.value_/sum.second->w_.value_ << " clusterSum final " << sum.second->e_.value_ << std::endl;}
     clusterSums.push_back(move(sum.second));
   }
 }

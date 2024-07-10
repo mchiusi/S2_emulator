@@ -43,22 +43,22 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
 
   HGCalTriggerCellSAShrPtrCollectionss triggerCellBuffers(
       config_.cColumns(), HGCalTriggerCellSAShrPtrCollections(config_.cRows(), HGCalTriggerCellSAShrPtrCollection()));
-  int energy_ = 0;
+  // int energy_ = 0;
   for (const auto& tc : triggerCellsIn) {
     // Temp copy of tc whilst moving from shared to unique ptr
     // std::cout << tc->index() << " " << tc->sortKey() << std::endl;
-    energy_ += tc->energy();
+    // energy_ += tc->energy();
     triggerCellBuffers.at(tc->index()).at(tc->sortKey()).push_back(make_shared<HGCalTriggerCell>(*tc));
   }
-  std::cout  << "Global energy " << energy_ << std::endl;
+  // std::cout  << "Global energy " << energy_ << std::endl;
 
   for (unsigned int iRow = 0; iRow < config_.cRows(); ++iRow) {
     for (unsigned int j = 0; j < config_.nColumnsPerFifo(); ++j) {
       for (unsigned int k = 0; k < config_.nFifos(); ++k) {
         unsigned int col = config_.firstSeedBin() + (config_.nColumnsPerFifo() * k) + j;
         const auto& cell = histogram.at(config_.cColumns() * iRow + col);
-        if (cell->S() > 0 and cell->maximaOffset()==(config_.fanoutWidths(cell->sortKey())+3)) {
-          // std::cout << cell->index() << " " << cell->sortKey() << std::endl;
+        if (cell->S() > 0 and cell->maximaOffset()==(config_.fanoutWidths(cell->sortKey())+4)) {
+          // std::cout << cell->index() << " " << cell->sortKey() << " " << cell->S() << std::endl;
           auto ch = make_unique<CentroidHelper>(cell->clock() + 1 + j,
                                                 config_.nColumnsPerFifo() * k + j,
                                                 cell->index(),
@@ -152,8 +152,8 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
       if (a->dataValid()) {
         unsigned int T = 0;
         // clusterizer 
-        int clu_energy = 0;
-        std::cout << "Considering seed " << a->column() << std::endl;
+        // int clu_energy = 0;
+        // std::cout << "Considering seed " << a->column() << " " << a->row() << std::endl;
         for (int iCol = a->column() - config_.nColumnsForClustering();
              iCol < a->column() + config_.nColumnsForClustering() + 1;
              ++iCol) {
@@ -166,48 +166,52 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
             if (row >= int(config_.cRows()))
               continue;  // Not in python emulator, but required to avoid out of bounds access
             if (triggerCellBuffers[iCol][row].empty()) {
-              // std::cout << "Opsss " << iCol << " row " << row << std::endl;
               clock[iCol] += 1;
               continue;
             }
             for (auto& tc : triggerCellBuffers[iCol][row]) {
               clock[iCol] += 1;
-              double tc_phi = tc->phi_ * M_PI/1944;
-              double tc_x = tc->rOverZ_ * std::cos( tc_phi );
-              double tc_y = tc->rOverZ_ * std::sin( tc_phi );
+              // double tc_phi = tc->phi_ * M_PI/1944;
+              // double tc_x = tc->rOverZ_ * std::cos( tc_phi );
+              // double tc_y = tc->rOverZ_ * std::sin( tc_phi );
   
-              double hc_phi = a->X() * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
-              double hc_x = a->Y() * std::cos( hc_phi );
-              double hc_y = a->Y() * std::sin( hc_phi );
+              // double hc_phi = a->X() * M_PI/1944; // (2.0*M_PI/3.0) / 4096;
+              // double hc_x = a->Y() * std::cos( hc_phi );
+              // double hc_y = a->Y() * std::sin( hc_phi );
        
-              double dx = tc_x - hc_x;
-              double dy = tc_y - hc_y;
+              // double dx = tc_x - hc_x;
+              // double dy = tc_y - hc_y;
+              // if (tc->energy() > 8000) {std::cout << tc_x << " " << hc_x << std::endl;}
+              // if (tc->energy() > 8000) {std::cout << tc_y << " " << hc_y << std::endl;}
               
-              double dR2 = ( dx * dx ) + ( dy * dy );
-              // unsigned int r1 = tc->rOverZ();
-              // unsigned int r2 = a->Y();
-              // int dR = r1 - r2;
-              // unsigned int absDPhi = abs(int(tc->phi()) - int(a->X()));
-              // unsigned int dR2 = dR * dR;
-              // unsigned int cosTerm = (absDPhi > config_.nBinsCosLUT()) ? 2047 : config_.cosLUT(absDPhi);
+              // double dR2 = ( dx * dx ) + ( dy * dy );
+              unsigned int r1 = tc->rOverZ();
+              unsigned int r2 = a->Y();
+              int dR = r1 - r2;
+              unsigned int absDPhi = abs(int(tc->phi()) - int(a->X()));
+              unsigned int dR2 = dR * dR;
+              unsigned int cosTerm = (absDPhi > 173) ? 2047 : config_.cosLUT(absDPhi);
 
-              // const unsigned a = 128;   // 2^7
-              // const unsigned b = 1024;  // 2^10
-              // dR2 += int(r1 * r2 / a) * cosTerm / b;
+              const unsigned a = 128;   // 2^7
+              const unsigned b = 1024;  // 2^10
+              dR2 += int(r1 * r2 / a) * cosTerm / b;
               tc->setClock(clock[iCol] + 1);
               if (clock[iCol] > T)
                 T = clock[iCol];
 
-              unsigned int dR2Cut = 5000; // config_.getDeltaR2Threshold(tc->layer());
+              unsigned int dR2Cut = config_.getDeltaR2Threshold(); // config_.getDeltaR2Threshold(tc->layer());
               if (dR2 < dR2Cut) {
                 clusteredTriggerCells[iCol].push_back(tc);
-                clu_energy += tc->energy();
+                // if (tc->energy() > 8000) {std::cout << "preso " << tc->energy() << " " << dR2 << std::endl;}
+                // clu_energy += tc->energy();
               } else {
+                // if (tc->energy() > 8000) {std::cout << "fuori dist " << tc->energy() <<  " " << tc->sortKey() <<  " " << tc->index() <<  " " << dR2 << std::endl;}
                 unclusteredTriggerCells[iCol].push_back(tc);
               }
             }
           }
 
+          // removing TC if assigned
           for (const auto& tc : clusteredTriggerCells[iCol]) {
             auto tcMatch = std::find_if(
                 triggerCellBuffers[iCol][tc->sortKey()].begin(),
@@ -227,7 +231,7 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
             }
           }
         }
-        std::cout << "Clusterized energy " << clu_energy << std::endl;
+        // std::cout << "Clusterized energy " << clu_energy << std::endl;
 
         unsigned int readoutFlagClock = 0;
         for (unsigned int iCol = a->column() - config_.nColumnsForClustering();
@@ -253,39 +257,55 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
       }
     }
   }
+  
+  // const unsigned largeReadoutTime = 1000;
+  // // int cl_energy = 0;
+  // for (unsigned int i = 0; i < largeReadoutTime;
+  //      ++i) {  // Magic numbers - a large number to ensure we read out all clustered trigger cells etc.?
+  //   for (unsigned int iCol = 0; iCol < config_.cColumns(); ++iCol) {
+  //     for (const auto& clustered : clusteredTriggerCells[iCol]) {
+  //       // std::cout << clustered->clock() << "----" << config_.clusterizerMagicTime() + i << std::endl;
+  //       if (clustered->clock() == config_.clusterizerMagicTime() + i) {
+  //         // cl_energy += clustered->ener/coutgy();
+  //         // std::cout<< "filling.." << std::endl;
+  //         clusteredTriggerCellsOut.push_back(clustered);
+  //       }
+  //     }
 
-  const unsigned largeReadoutTime = 1000;
-  int cl_energy = 0;
-  for (unsigned int i = 0; i < largeReadoutTime;
-       ++i) {  // Magic numbers - a large number to ensure we read out all clustered trigger cells etc.?
-    for (unsigned int iCol = 0; iCol < config_.cColumns(); ++iCol) {
-      for (const auto& clustered : clusteredTriggerCells[iCol]) {
-        // std::cout << clustered->clock() << "----" << config_.clusterizerMagicTime() + i << std::endl;
-        if (clustered->clock() == config_.clusterizerMagicTime() + i) {
-          cl_energy += clustered->energy();
-          // std::cout<< "filling.." << std::endl;
-          clusteredTriggerCellsOut.push_back(clustered);
-        }
-      }
+  //     for (const auto& unclustered : unclusteredTriggerCells[iCol]) {
+  //       if (unclustered->clock() == config_.clusterizerMagicTime() + i) {
+  //         unclusteredTriggerCellsOut.push_back(unclustered);
+  //       }
+  //     }
 
-      for (const auto& unclustered : unclusteredTriggerCells[iCol]) {
-        if (unclustered->clock() == config_.clusterizerMagicTime() + i) {
-          unclusteredTriggerCellsOut.push_back(unclustered);
-        }
-      }
+  //     for (auto& readoutFlag : readoutFlags[iCol]) {
+  //       if (readoutFlag) {
+  //         if (readoutFlag->clock() == config_.clusterizerMagicTime() + i) {
+  //           // TODO : Check if we can move the readoutFlag and leave a nullptr
+  //           // Or if the readoutFlag could be used again later on
+  //           readoutFlagsOut.push_back(move(readoutFlag));
+  //         }
+  //       }
+  //     }
+  //   }
+  // }
 
-      for (auto& readoutFlag : readoutFlags[iCol]) {
-        if (readoutFlag) {
-          if (readoutFlag->clock() == config_.clusterizerMagicTime() + i) {
-            // TODO : Check if we can move the readoutFlag and leave a nullptr
-            // Or if the readoutFlag could be used again later on
-            readoutFlagsOut.push_back(move(readoutFlag));
-          }
-        }
+  for (unsigned int iCol = 0; iCol < config_.cColumns(); ++iCol) {
+    for (const auto& clustered : clusteredTriggerCells[iCol]) {
+      clusteredTriggerCellsOut.push_back(clustered);
+    }
+  
+    for (const auto& unclustered : unclusteredTriggerCells[iCol]) {
+      unclusteredTriggerCellsOut.push_back(unclustered);
+    }
+
+    for (auto& readoutFlag : readoutFlags[iCol]) {
+      if (readoutFlag) {
+        readoutFlagsOut.push_back(move(readoutFlag));
       }
     }
   }
-  std::cout << "Clusterized energy all seeds " << cl_energy << std::endl;
+  // std::cout << "Clusterized energy all seeds " << cl_energy << std::endl;
 }
 
 // Converts clustered TCs into cluster object (one for each TC) ready for accumulation
@@ -359,12 +379,13 @@ void HGCalHistoClustering::triggerCellToCluster(const HGCalTriggerCellSAShrPtrCo
 }
 
 void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clusters, const HGCalHistogramCellSAPtrCollection& histogram ) const
+// void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clusters ) const
 {  
   HGCalClusterSAShrPtrCollection output;
   
   std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
   for( auto& x : clusters ){
-    std::cout << x->sortKey_ << std::endl;
+    // std::cout << x->sortKey_ << std::endl;
     auto lKey = std::make_pair( x->sortKey_ , x->index_ );
     auto lIt = cluster_map.find( lKey );
     if ( lIt == cluster_map.end() ){
@@ -383,10 +404,10 @@ void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clus
     
   }
 
-  for( auto& x : histogram ){  
-    auto lIt = cluster_map.find( std::make_pair( x->sortKey_ , x->index_ ) );
-    if ( lIt != cluster_map.end() ) lIt->second->clock_ = x->clock_ + 11;     
-  }
+  // for( auto& x : histogram ){  
+  //   auto lIt = cluster_map.find( std::make_pair( x->sortKey_ , x->index_ ) );
+  //   if ( lIt != cluster_map.end() ) lIt->second->clock_ = x->clock_ + 11;     
+  // }
 
   for( auto& x : output ) x->saturate();
  

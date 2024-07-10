@@ -210,6 +210,9 @@ def scatter_cluster_energy(cl, args):
 ########### Comparison with CMSSW Simulation ############
 #########################################################
 
+def get_eta(r_z):
+    return -np.log(np.tan(np.arctan(r_z)/2)) 
+
 def gaussian(x, A, mu, s):
     return A * np.exp(-((x-mu)**2)/(2*s**2))
 
@@ -222,6 +225,53 @@ def fit_response(data, bin_width = 0.05):
     amplitude, mean, std = popt
     if abs(std)/mean>0.5: print(data)
     return abs(std)/mean, np.sqrt(pcov[2, 2])/mean
+
+def effrms(resp_bin, c=0.68):
+    """ Compute half-width of the shortest interval (min std)
+    containing a fraction 'c' of items """
+    resp_bin = np.sort(resp_bin, kind="mergesort")
+    m = int(c * len(resp_bin)) + 1
+    min_index = np.argmin(resp_bin[m:] - resp_bin[:-m])
+    return resp_bin[min_index:min_index + m]
+
+def plot_bin_distribution(resp_emu, resp_simul, var, index, args):
+    plt.style.use(mplhep.style.CMS)
+    plt.hist(resp_emu, bins=10, alpha=0.5, label='emulation')
+    plt.hist(resp_simul, bins=10, alpha=0.5, label='simulation')
+    plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$') 
+    plt.title(str(index)+' bin_number')
+    plt.legend()
+    plt.grid()
+
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo_bin'+str(index)+'.pdf')
+    plt.clf()
+
+def histo_2D_position(x_data, y_data, var, args, bins=(20,20), cmap=white_viridis):
+    plt.style.use(mplhep.style.CMS)
+    plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
+    plt.colorbar()
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    plt.ylabel(r'$\phi^{emulation}-\phi^{gen}$'  if var=='emulation' else r'$\phi^{emulation}-\phi^{gen}$')
+    plt.xlabel(r'$\eta^{simulation}-\eta^{gen}$' if var=='emulation' else r'$\eta^{simulation}-\eta^{gen}$')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.png')
+    plt.clf()
+
+def comparison_histo(emu, simul, args, var, bin_n, range_):
+    plt.style.use(mplhep.style.CMS)
+    bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
+    plt.hist(emu,   bins=bin_edges, alpha=.8, label='emulation')
+    plt.hist(simul, bins=bin_edges, alpha=.8, label='simulation')
+    plt.legend()
+    plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if var=='scale_pT' else r'$\phi^{cluster}-\phi^{gen}$' if var=='scale_phi' else \
+               r'$\eta^{cluster}-\eta^{gen}$' if var=='scale_eta' else r'$p_{T}^{cluster}$ [GeV]' if var=='pT' else \
+               r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$')
+    plt.ylabel('Counts')
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    if (var=='pT' or var=='eta' or var=='phi') and args.pileup=='PU200': plt.yscale('log')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.png')
+    plt.clf()
 
 def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[]):
     bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
@@ -247,12 +297,9 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       err_resol_simul[index] = np.std(resp_bin_simul)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_simul)) if len(resp_bin_simul)>1 else 0
     
       if args.eff_rms and (var == 'pT' or var == 'pT_eta'):
-        n_sigma = 1
-        eff_rms_emu   = [x for x in resp_bin_emu if (np.mean(resp_bin_emu) - n_sigma*np.std(resp_bin_emu)) <= x <= \
-                         (np.mean(resp_bin_emu) + n_sigma*np.std(resp_bin_emu))]
-        eff_rms_simul = [x for x in resp_bin_simul if (np.mean(resp_bin_simul) - n_sigma*np.std(resp_bin_simul)) <= x <= \
-                         (np.mean(resp_bin_simul) + n_sigma*np.std(resp_bin_simul))]
-        if var == 'pT': plot_bin_distribution(eff_rms_emu, eff_rms_simul, var, index, args)
+        eff_rms_emu   = effrms(resp_bin_emu)
+        eff_rms_simul = effrms(resp_bin_simul)
+        # if var == 'pT': plot_bin_distribution(eff_rms_emu, eff_rms_simul, var, index, args)
         resol_emu[index]       = np.std(eff_rms_emu)/np.mean(eff_rms_emu) if len(eff_rms_emu)>1 else 0
         err_resol_emu[index]   = np.std(eff_rms_emu)/(np.sqrt(2*len(eff_rms_emu)-2)*np.mean(eff_rms_emu)) if len(eff_rms_emu)>1 else 0
         resol_simul[index]     = np.std(eff_rms_simul)/np.mean(eff_rms_simul) if len(eff_rms_simul)>1 else 0
@@ -278,8 +325,8 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
     plt.legend()
     plt.grid()
     plt.tight_layout()
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'.png')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'_'+args.tag+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'_'+args.tag+'.png')
     plt.clf()
 
     if var=='n_cl_pt' or var=='n_cl_eta' or var=='eta' or var=='phi': return
@@ -296,42 +343,13 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
     plt.grid()
     plt.ylim(bottom=0)
     plt.tight_layout()
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'.png')
-    plt.clf()
-
-def plot_bin_distribution(resp_emu, resp_simul, var, index, args):
-    plt.style.use(mplhep.style.CMS)
-    plt.hist(resp_emu, bins=10, alpha=0.5, label='emulation')
-    plt.hist(resp_simul, bins=10, alpha=0.5, label='simulation')
-    plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$') 
-    plt.title(str(index)+' bin_number')
-    plt.legend()
-    plt.grid()
-
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo_bin'+str(index)+'.pdf')
-    plt.clf()
-
-def get_eta(r_z):
-    return -np.log(np.tan(np.arctan(r_z)/2)) 
-
-def comparison_histo(emu, simul, args, var, bin_n, range_):
-    plt.style.use(mplhep.style.CMS)
-    bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
-    plt.hist(emu,   bins=bin_edges, alpha=.8, label='emulation')
-    plt.hist(simul, bins=bin_edges, alpha=.8, label='simulation')
-    plt.legend()
-    plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if var=='scale_pT' else r'$\phi^{cluster}-\phi^{gen}$' if var=='scale_phi' else \
-               r'$\eta^{cluster}-\eta^{gen}$' if var=='scale_eta' else r'$p_{T}^{cluster}$ [GeV]' if var=='pT' else \
-               r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$')
-    plt.ylabel('Counts')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
-    if (var=='pT' or var=='eta' or var=='phi') and args.pileup=='PU200': plt.yscale('log')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_distribution_histo.png')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'_'+args.tag+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'_'+args.tag+'.png')
     plt.clf()
 
 def plot_simul_comparison(clusters, args):
+    """ Compute pT and position of each identified cluster vs gen position
+    for both emulation and simulation. Save the processed data in a json file """
     n_cl_emu, n_cl_CMSSW, p_t_emu, p_t_CMSSW, p_t_glob_emu, p_t_glob_CMSSW = [], [], [], [], [], []
     eta_emu, phi_emu, eta_CMSSW, phi_CMSSW, eta_glob_emu, eta_glob_CMSSW, phi_glob_emu, phi_glob_CMSSW = [], [], [], [], [], [], [], []
     p_t_gen, eta_gen, phi_gen = [], [], []
@@ -347,7 +365,7 @@ def plot_simul_comparison(clusters, args):
         if len(indices) == 0: continue
         index_  = indices[[cl_pt[i] for i in indices].index(max([cl_pt[i] for i in indices]))]
 
-        if (cl_ev['emul_cl'][index_][0]/cl_ev['CMSSW_ev'].phi_gen < 0.8): print(cl_ev['CMSSW_ev'].event)
+        if (cl_ev['emul_cl'][index_][2]/cl_ev['CMSSW_ev'].pT_gen < 0.65): print('Left tail for ', cl_ev['CMSSW_ev'].event)
         eta_emu.append(cl_ev['emul_cl'][index_][0])
         phi_emu.append(cl_ev['emul_cl'][index_][1])
         p_t_emu.append(cl_ev['emul_cl'][index_][2])
@@ -387,7 +405,7 @@ def plot_simul_comparison(clusters, args):
         'n_cl_emu'    : n_cl_emu,     'n_cl_CMSSW': n_cl_CMSSW
     }
 
-    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'.:'
+    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'_'+args.tag+'.json'
     with open(file_path, 'w') as f:
       json.dump(plotting_dict, f)
       print('Json file created in /plots/data')
@@ -395,7 +413,9 @@ def plot_simul_comparison(clusters, args):
     plotting_json(args)
 
 def plotting_json(args):
-    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'.json'
+    """" Read the json file in plots/data and 
+    plot performance vs simulation """
+    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'_'+args.tag+'.json'
     with open(file_path, 'r') as f:
       plotting_dict = json.load(f)
       print('Json file read in /plots/data')
@@ -434,17 +454,6 @@ def plotting_json(args):
     histo_2D_position(scale_emu_eta,   scale_emu_phi,   'emulation',  args)
     histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
 
-def histo_2D_position(x_data, y_data, var, args, bins=(20,20), cmap=white_viridis):
-    plt.style.use(mplhep.style.CMS)
-    plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
-    plt.colorbar()
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
-    plt.ylabel(r'$\phi^{emulation}-\phi^{gen}$'  if var=='emulation' else r'$\phi^{emulation}-\phi^{gen}$')
-    plt.xlabel(r'$\eta^{simulation}-\eta^{gen}$' if var=='emulation' else r'$\eta^{simulation}-\eta^{gen}$')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+ var + '.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+ var + '.png')
-    plt.clf()
-
 ## not used ##
 def create_plot_py(objects, ev, args):
     heatmap = np.zeros((64, 124))
@@ -455,4 +464,3 @@ def create_plot_py(objects, ev, args):
 
     if args.performance: return calculate_shift(heatmap, ev) 
     elif args.col or args.phi: create_heatmap(heatmap, 'columns_pre_unpacking' if args.col else 'pre_unpacking', ev, args)
-

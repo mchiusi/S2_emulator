@@ -48,8 +48,8 @@ namespace l1thgcfirmware {
                       const std::map<Step,unsigned int>& stepLatency,
                       const std::vector<unsigned int>& depths, const std::vector<unsigned int>& triggerLayers,
                       const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
-                      const std::vector<unsigned int>& layerWeights_E_EM_core,
-                      const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
+                      const std::vector<unsigned int>& layerWeights_E_EM_core, const std::vector<unsigned int>& layerWeights_E_H_early, 
+                      unsigned int DeltaR2Threshold, unsigned int correction, unsigned int saturation,
                       unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin, 
                       int nColumnsForClustering, int nRowsForClustering);
     ClusterAlgoConfig(unsigned int cClocks, unsigned int cInputs, unsigned int cInputs2, unsigned int cInt, unsigned int cColumns, unsigned int cRows,
@@ -61,8 +61,8 @@ namespace l1thgcfirmware {
                       const std::map<Step,unsigned int>& stepLatency,
                       const std::vector<unsigned int>& depths, const std::vector<unsigned int>& triggerLayers,
                       const std::vector<unsigned int>& layerWeights_E, const std::vector<unsigned int>& layerWeights_E_EM,
-                      const std::vector<unsigned int>& layerWeights_E_EM_core,
-                      const std::vector<unsigned int>& layerWeights_E_H_early, unsigned int correction, unsigned int saturation,
+                      const std::vector<unsigned int>& layerWeights_E_EM_core, const std::vector<unsigned int>& layerWeights_E_H_early, 
+                      unsigned int DeltaR2Threshold, unsigned int correction, unsigned int saturation,
                       unsigned int nFifos, unsigned int nColumnsPerFifo, unsigned int firstSeedBin,
                       int nColumnsForClustering, int nRowsForClustering);
     ~ClusterAlgoConfig() {};
@@ -185,6 +185,9 @@ namespace l1thgcfirmware {
     std::vector<unsigned int> layerWeights_E_EM_core() const { return layerWeights_E_EM_core_; }
     unsigned int layerWeight_E_EM_core( unsigned int iTriggerLayer ) const { return layerWeights_E_EM_core_.at(iTriggerLayer); }
 
+    void setDeltaR2Threshold(const unsigned DeltaR2Threshold) { DeltaR2Threshold_ = DeltaR2Threshold; }
+    unsigned int getDeltaR2Threshold() const { return DeltaR2Threshold_; }
+
     void setNFifos(const unsigned nFifos) { nFifos_ = nFifos; }
     unsigned int nFifos() const { return nFifos_; }
     void setNColumnsPerFifo(const unsigned nColumnsPerFifo) { nColumnsPerFifo_ = nColumnsPerFifo; }
@@ -299,6 +302,7 @@ namespace l1thgcfirmware {
     unsigned int nTriggerLayers_;
     unsigned int nFifos_;
     unsigned int nColumnsPerFifo_;
+    unsigned int DeltaR2Threshold_;
     int nColumnsForClustering_;
     int nRowsForClustering_;
     unsigned int firstSeedBin_;
