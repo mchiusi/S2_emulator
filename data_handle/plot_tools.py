@@ -432,54 +432,52 @@ def plotting_json(args):
       plotting_dict = json.load(f)
       print('Json file read in /plots/data')
 
+    if args.rate: 
+       plot_rate(plotting_dict['rate_emu'], plotting_dict['rate_sim'], args)
+       return
+
     # Access the data
-    # p_t_emu, p_t_CMSSW = plotting_dict['p_t_emu'], plotting_dict['p_t_CMSSW']
-    # p_t_glob_emu, p_t_glob_CMSSW = plotting_dict['p_t_glob_emu'], plotting_dict['p_t_glob_CMSSW']
-    # eta_emu, phi_emu = plotting_dict['eta_emu'], plotting_dict['phi_emu']
-    # eta_CMSSW, phi_CMSSW = plotting_dict['eta_CMSSW'], plotting_dict['phi_CMSSW']
-    # eta_glob_emu, eta_glob_CMSSW = plotting_dict['eta_glob_emu'], plotting_dict['eta_glob_CMSSW']
-    # phi_glob_emu, phi_glob_CMSSW = plotting_dict['phi_glob_emu'], plotting_dict['phi_glob_CMSSW']
-    # p_t_gen, eta_gen, phi_gen = plotting_dict['p_t_gen'], plotting_dict['eta_gen'], plotting_dict['phi_gen']
-    # p_t_gen_eff, eta_gen_eff = plotting_dict['p_t_gen_eff'], plotting_dict['eta_gen_eff']
-    # n_cl_emu, n_cl_CMSSW = plotting_dict['n_cl_emu'], plotting_dict['n_cl_CMSSW']
-    # n_cl_emu_matched, n_cl_simul_matched = plotting_dict['n_cl_emu_matched'], plotting_dict['n_cl_simul_matched']
-    rate_emu, rate_sim = plotting_dict['rate_emu'], plotting_dict['rate_sim']
+    p_t_emu, p_t_CMSSW = plotting_dict['p_t_emu'], plotting_dict['p_t_CMSSW']
+    p_t_glob_emu, p_t_glob_CMSSW = plotting_dict['p_t_glob_emu'], plotting_dict['p_t_glob_CMSSW']
+    eta_emu, phi_emu = plotting_dict['eta_emu'], plotting_dict['phi_emu']
+    eta_CMSSW, phi_CMSSW = plotting_dict['eta_CMSSW'], plotting_dict['phi_CMSSW']
+    eta_glob_emu, eta_glob_CMSSW = plotting_dict['eta_glob_emu'], plotting_dict['eta_glob_CMSSW']
+    phi_glob_emu, phi_glob_CMSSW = plotting_dict['phi_glob_emu'], plotting_dict['phi_glob_CMSSW']
+    p_t_gen, eta_gen, phi_gen = plotting_dict['p_t_gen'], plotting_dict['eta_gen'], plotting_dict['phi_gen']
+    p_t_gen_eff, eta_gen_eff = plotting_dict['p_t_gen_eff'], plotting_dict['eta_gen_eff']
+    n_cl_emu, n_cl_CMSSW = plotting_dict['n_cl_emu'], plotting_dict['n_cl_CMSSW']
+    n_cl_emu_matched, n_cl_simul_matched = plotting_dict['n_cl_emu_matched'], plotting_dict['n_cl_simul_matched']
 
-    # # distributions
-    # comparison_histo(p_t_glob_emu, p_t_glob_CMSSW, args, 'pT',  20, [0, 200 if args.pileup=='PU0' else 100])
-    # comparison_histo(eta_glob_emu, eta_glob_CMSSW, args, 'eta', 20, [1.6, 2.8])
-    # comparison_histo(phi_glob_emu, phi_glob_CMSSW, args, 'phi', 20, [0, 2.2])
+    # distributions
+    comparison_histo(p_t_glob_emu, p_t_glob_CMSSW, args, 'pT',  20, [0, 200 if args.pileup=='PU0' else 100])
+    comparison_histo(eta_glob_emu, eta_glob_CMSSW, args, 'eta', 20, [1.6, 2.8])
+    comparison_histo(phi_glob_emu, phi_glob_CMSSW, args, 'phi', 20, [0, 2.2])
 
-    # scale_emu, scale_simul = np.divide(p_t_emu, p_t_gen), np.divide(p_t_CMSSW, p_t_gen)
-    # scale_emu_eta, scale_simul_eta = np.subtract(eta_emu, eta_gen), np.subtract(eta_CMSSW, eta_gen)
-    # scale_emu_phi, scale_simul_phi = np.subtract(phi_emu, phi_gen), np.subtract(phi_CMSSW, phi_gen)
-    # comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0.25, 1.25] if args.pileup=='PU0' else [0, 1.6])
-    # comparison_histo(scale_emu_eta, scale_simul_eta, args, 'scale_eta', 20, [-0.015, 0.025])
-    # comparison_histo(scale_emu_phi, scale_simul_phi, args, 'scale_phi', 20, [-0.02, 0.02])
+    scale_emu, scale_simul = np.divide(p_t_emu, p_t_gen), np.divide(p_t_CMSSW, p_t_gen)
+    scale_emu_eta, scale_simul_eta = np.subtract(eta_emu, eta_gen), np.subtract(eta_CMSSW, eta_gen)
+    scale_emu_phi, scale_simul_phi = np.subtract(phi_emu, phi_gen), np.subtract(phi_CMSSW, phi_gen)
+    comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0.25, 1.25] if args.pileup=='PU0' else [0, 1.6])
+    comparison_histo(scale_emu_eta, scale_simul_eta, args, 'scale_eta', 20, [-0.015, 0.025])
+    comparison_histo(scale_emu_phi, scale_simul_phi, args, 'scale_phi', 20, [-0.02, 0.02])
 
-    # # responses - scale and reoslution
-    # compute_responses(p_t_emu, p_t_CMSSW, p_t_gen, args, 'pT', 10, [0, 200 if args.pileup=='PU0' else 100])
-    # compute_responses(p_t_emu, p_t_CMSSW, eta_gen, args, 'pT_eta', 10, [1.6,2.8], p_t_gen)
-    # compute_responses(eta_emu, eta_CMSSW, eta_gen, args, 'eta', 10, [1.6,2.8])
-    # compute_responses(phi_emu, phi_CMSSW, phi_gen, args, 'phi', 10, [0.2,1.8])
-    # compute_responses(n_cl_emu, n_cl_CMSSW, p_t_gen, args, 'n_cl_pt',  10, [0, 200 if args.pileup=='PU0' else 100])
-    # compute_responses(n_cl_emu, n_cl_CMSSW, eta_gen, args, 'n_cl_eta', 10, [1.6,2.8])
+    # responses - scale and reoslution
+    compute_responses(p_t_emu, p_t_CMSSW, p_t_gen, args, 'pT', 10, [0, 200 if args.pileup=='PU0' else 100])
+    compute_responses(p_t_emu, p_t_CMSSW, eta_gen, args, 'pT_eta', 10, [1.6,2.8], p_t_gen)
+    compute_responses(eta_emu, eta_CMSSW, eta_gen, args, 'eta', 10, [1.6,2.8])
+    compute_responses(phi_emu, phi_CMSSW, phi_gen, args, 'phi', 10, [0.2,1.8])
+    compute_responses(n_cl_emu, n_cl_CMSSW, p_t_gen, args, 'n_cl_pt',  10, [0, 200 if args.pileup=='PU0' else 100])
+    compute_responses(n_cl_emu, n_cl_CMSSW, eta_gen, args, 'n_cl_eta', 10, [1.6,2.8])
 
-    # # cluster shift wrt gen particle
-    # histo_2D_position(scale_emu_eta,   scale_emu_phi,   'emulation',  args)
-    # histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
+    # cluster shift wrt gen particle
+    histo_2D_position(scale_emu_eta,   scale_emu_phi,   'emulation',  args)
+    histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
 
-    # # turnOns
-    # eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  '1GeV', 20, args)
-    # eff_plots(n_cl_emu_matched, n_cl_simul_matched, eta_gen_eff, 'eta', '1GeV', 10, args)
-
-    # rates
-    plot_rate(rate_emu, rate_sim, args)
+    # turnOns
+    eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  '1GeV', 20, args)
+    eff_plots(n_cl_emu_matched, n_cl_simul_matched, eta_gen_eff, 'eta', '1GeV', 10, args)
 
 def plot_rate(rate_emu, rate_sim, args):
     plt.style.use(mplhep.style.CMS)
-    # (bin_edges[1:] + bin_edges[:-1])/2
-
     pT_cuts = [int(pT) for pT in rate_emu.keys()]
     plt.errorbar(pT_cuts[:-1], list(rate_emu.values())[:-1], yerr=[np.sqrt(rate) for rate in list(rate_emu.values())[:-1]], 
                  xerr=[(pT_cuts[i+1] - pT_cuts[i])/2 for i in range(len(pT_cuts)-1)], ls='None', lw=2, marker='s', label='emulation') 
@@ -528,6 +526,7 @@ def compute_rate(clusters, args):
     with open(file_path, 'w') as f:
         json.dump(data, f)
         print('Json file created in /plots/data')
+    plot_rate(rate_emu, rate_sim, args)
 
 ## not used ##
 def create_plot_py(objects, ev, args):
