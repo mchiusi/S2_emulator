@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import matplotlib.cm
 from matplotlib.colors import LinearSegmentedColormap
 import scipy.stats as stats
 from scipy.optimize import curve_fit
@@ -7,6 +6,7 @@ import numpy as np
 import yaml
 import json
 import mplhep
+import os
 
 white_viridis = LinearSegmentedColormap.from_list('white_viridis', [
     (0,    '#ffffff'),
@@ -62,7 +62,7 @@ def create_plot(objects, step, ev, args, clusters=[]):
     if args.col or args.phi: create_heatmap(heatmap, ev, *step_[step], args) 
     if args.performance: return calculate_shift(heatmap, ev)
     if args.thr_seed and seed: return [len(seed), ev.eta_gen, ev.pT_gen]
-    if (args.cl_energy or args.simulation) and cl: return {'emul_cl':cl, 'CMSSW_ev':ev}
+    if (args.cl_energy or args.simulation or args.rate) and step=='clustering': return {'emul_cl':cl, 'CMSSW_ev':ev}
 
 def hgcal_limits(ev):
     plt.axhline(y=(0.476/ev.LSB_r_z-440)/64, color='red', linestyle='--')
@@ -124,8 +124,8 @@ def create_histo(data, variable, title):
 ################## Efficiency plots #####################
 #########################################################
 
-def compute_efficiency_plots(seeds, variable, thr, bin_n=10):
-    bin_edges = np.linspace(min(variable), max(variable), num=bin_n+1)
+def compute_efficiency_plots(seeds, variable, label, bin_n=10, max_value=None):
+    bin_edges = np.linspace(min(variable), max(variable) if not max_value else max_value, num=bin_n+1)
     indices = np.digitize(variable, bin_edges) - 1
  
     eff, lo_err, up_err = {}, {}, {}
@@ -141,19 +141,21 @@ def compute_efficiency_plots(seeds, variable, thr, bin_n=10):
       lo_err[index] = k/n - result.proportion_ci(confidence_level=0.95).low
       up_err[index] = result.proportion_ci(confidence_level=0.95).high - k/n
 
+    plt.style.use(mplhep.style.CMS)
     plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, eff.values(), 
                  yerr=np.array(list(zip(lo_err.values(), up_err.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label=thr, alpha=0.7) 
+                 xerr=(bin_edges[1] - bin_edges[0])/2, fmt='o', capsize=3, label=label, alpha=0.7) 
 
 def produce_efficiency_plots(variable, args):
+    plt.style.use(mplhep.style.CMS)
+    plt.xlabel('identified seeds' if variable=='thr' else r'$p_{T}$ [GeV]' if variable=='pT' else r'$\eta$')
+    plt.ylabel('Counts' if variable=='thr' else 'Efficiency')
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
-    plt.xlabel('identified seeds' if variable=='thr' else r'$p_{T}$ [GeV]' if variable=='pT' else r'$\eta$')
-    plt.ylabel('Counts' if variable=='thr' else '% of identified seeds')
-    plt.title('Efficiency 2D seeds '+variable+' '+args.particles+' '+args.pileup)
-    thresholds = '_a'+'_'.join(map(str, [int(i*10) for i in cfg['thresholdMaximaParam_a']]))
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+thresholds+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+thresholds+'.png')
+
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+'.png')
     plt.clf()
 
 def plot_seeds(seeds, args):
@@ -169,11 +171,11 @@ def plot_seeds(seeds, args):
     produce_efficiency_plots('thr', args)
 
     for thr in range(len(thr_list)):
-        compute_efficiency_plots(seeds_list[thr], p_t_list[thr], thr_list[thr], 25)
+        compute_efficiency_plots(seeds_list, p_t_list, thr_list, 25)
     produce_efficiency_plots('pT', args)
  
     for thr in range(len(thr_list)):
-        compute_efficiency_plots(seeds_list[thr], eta_list[thr], thr_list[thr], 5)
+        compute_efficiency_plots(seeds_list, eta_list, thr_list, 10)
     produce_efficiency_plots('eta', args)
 
 #########################################################
@@ -295,10 +297,11 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       err_resol_emu[index]   = np.std(resp_bin_emu)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_emu)) if len(resp_bin_emu)>1 else 0
       resol_simul[index]     = np.std(resp_bin_simul)/np.mean(resp_bin_simul) if len(resp_bin_simul)>1 else 0
       err_resol_simul[index] = np.std(resp_bin_simul)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_simul)) if len(resp_bin_simul)>1 else 0
-    
+      if var == 'pT_eta': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
+
       if args.eff_rms and (var == 'pT' or var == 'pT_eta'):
-        eff_rms_emu   = effrms(resp_bin_emu)
-        eff_rms_simul = effrms(resp_bin_simul)
+        eff_rms_emu   = effrms(resp_bin_emu) if len(resp_bin_emu)>1 else [0]
+        eff_rms_simul = effrms(resp_bin_simul) if len(resp_bin_simul)>1 else [0]
         # if var == 'pT': plot_bin_distribution(eff_rms_emu, eff_rms_simul, var, index, args)
         resol_emu[index]       = np.std(eff_rms_emu)/np.mean(eff_rms_emu) if len(eff_rms_emu)>1 else 0
         err_resol_emu[index]   = np.std(eff_rms_emu)/(np.sqrt(2*len(eff_rms_emu)-2)*np.mean(eff_rms_emu)) if len(eff_rms_emu)>1 else 0
@@ -308,7 +311,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       if args.fit_resp and (var == 'pT' or var == 'pT_eta'): 
         resol_emu[index], err_resol_emu[index] = fit_response(resp_bin_emu)
         resol_simul[index], err_resol_simul[index] = fit_response(resp_bin_simul)
-        # if var == 'pT_eta': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
+        # if var == 'eta': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
 
     # plotting
     plt.style.use(mplhep.style.CMS)
@@ -350,21 +353,34 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
 def plot_simul_comparison(clusters, args):
     """ Compute pT and position of each identified cluster vs gen position
     for both emulation and simulation. Save the processed data in a json file """
+
     n_cl_emu, n_cl_CMSSW, p_t_emu, p_t_CMSSW, p_t_glob_emu, p_t_glob_CMSSW = [], [], [], [], [], []
     eta_emu, phi_emu, eta_CMSSW, phi_CMSSW, eta_glob_emu, eta_glob_CMSSW, phi_glob_emu, phi_glob_CMSSW = [], [], [], [], [], [], [], []
-    p_t_gen, eta_gen, phi_gen = [], [], []
+    p_t_gen, eta_gen, phi_gen, p_t_gen_eff, eta_gen_eff, phi_gen_eff, n_cl_emu_matched, n_cl_simul_matched = [], [], [], [], [], [], [], []
+    
     for cl_ev in clusters:
       if cl_ev:
         n_cl_emu.append(len(cl_ev['emul_cl']))
         n_cl_CMSSW.append(len(cl_ev['CMSSW_ev'].cluster.good_cl3d_pt))
+        p_t_gen_eff.append(1.*cl_ev['CMSSW_ev'].pT_gen)
+        eta_gen_eff.append(1.*cl_ev['CMSSW_ev'].eta_gen)
+        phi_gen_eff.append(1.*cl_ev['CMSSW_ev'].phi_gen)
         
         # emulation
-        cl_pt   = [cl[2] for cl in cl_ev['emul_cl']]
-        indices = [i for i, cl in enumerate(cl_pt) if distance([cl_ev['emul_cl'][i][0], \
-                   cl_ev['emul_cl'][i][1]],cl_ev['CMSSW_ev'],0)<0.1]
-        if len(indices) == 0: continue
-        index_  = indices[[cl_pt[i] for i in indices].index(max([cl_pt[i] for i in indices]))]
+        cl_pt_emu = [cl[2] for cl in cl_ev['emul_cl']]
+        indices_emu = [i for i, cl in enumerate(cl_pt_emu) if distance([cl_ev['emul_cl'][i][0], \
+                       cl_ev['emul_cl'][i][1]],cl_ev['CMSSW_ev'],0)<0.1]
+        n_cl_emu_matched.append(len(indices_emu))
+        
+        # simulation
+        cl_pt_sim = [cl for cl in cl_ev['CMSSW_ev'].cluster.good_cl3d_pt]
+        indices_sim = [i for i, cl in enumerate(cl_pt_sim) if distance([cl_ev['CMSSW_ev'].cluster.good_cl3d_eta[i], \
+                       cl_ev['CMSSW_ev'].cluster.good_cl3d_phi[i]],cl_ev['CMSSW_ev'],0)<0.1]
+        n_cl_simul_matched.append(len(indices_sim))
+        if (len(indices_emu) == 0 and cl_ev['CMSSW_ev'].pT_gen > 25): print("No clusters in emulation for event ", cl_ev['CMSSW_ev'].event)
+        if (len(indices_emu) == 0 or len(indices_sim) == 0): continue
 
+        index_  = indices_emu[[cl_pt_emu[i] for i in indices_emu].index(max([cl_pt_emu[i] for i in indices_emu]))]
         if (cl_ev['emul_cl'][index_][2]/cl_ev['CMSSW_ev'].pT_gen < 0.65): print('Left tail for ', cl_ev['CMSSW_ev'].event)
         eta_emu.append(cl_ev['emul_cl'][index_][0])
         phi_emu.append(cl_ev['emul_cl'][index_][1])
@@ -374,13 +390,7 @@ def plot_simul_comparison(clusters, args):
         phi_glob_emu.extend([cl[1] for cl in cl_ev['emul_cl']]) 
         p_t_glob_emu.extend([cl[2] for cl in cl_ev['emul_cl']])
 
-        # simulation
-        cl_pt   = [cl for cl in cl_ev['CMSSW_ev'].cluster.good_cl3d_pt]
-        indices = [i for i, cl in enumerate(cl_pt) if distance([cl_ev['CMSSW_ev'].cluster.good_cl3d_eta[i], \
-                   cl_ev['CMSSW_ev'].cluster.good_cl3d_phi[i]],cl_ev['CMSSW_ev'],0)<0.1]
-        if len(indices) == 0: continue
-        index_  = indices[[cl_pt[i] for i in indices].index(max([cl_pt[i] for i in indices]))]
-
+        index_  = indices_sim[[cl_pt_sim[i] for i in indices_sim].index(max([cl_pt_sim[i] for i in indices_sim]))]
         p_t_CMSSW.append(1.*cl_ev['CMSSW_ev'].cluster.good_cl3d_pt[index_])
         eta_CMSSW.append(1.*cl_ev['CMSSW_ev'].cluster.good_cl3d_eta[index_])
         phi_CMSSW.append(1.*cl_ev['CMSSW_ev'].cluster.good_cl3d_phi[index_])
@@ -395,14 +405,16 @@ def plot_simul_comparison(clusters, args):
 
     # store data before plotting
     plotting_dict = {
-        'p_t_emu'     : p_t_emu,      'p_t_CMSSW'     : p_t_CMSSW, 
-        'p_t_glob_emu': p_t_glob_emu, 'p_t_glob_CMSSW': p_t_glob_CMSSW,
-        'eta_emu'     : eta_emu,      'phi_emu'       : phi_emu, 
-        'eta_CMSSW'   : eta_CMSSW,    'phi_CMSSW'     : phi_CMSSW,
-        'eta_glob_emu': eta_glob_emu, 'eta_glob_CMSSW': eta_glob_CMSSW, 
-        'phi_glob_emu': phi_glob_emu, 'phi_glob_CMSSW': phi_glob_CMSSW,
-        'p_t_gen'     : p_t_gen,      'eta_gen'   : eta_gen, 'phi_gen': phi_gen,
-        'n_cl_emu'    : n_cl_emu,     'n_cl_CMSSW': n_cl_CMSSW
+        'p_t_emu'      : p_t_emu,      'p_t_CMSSW'     : p_t_CMSSW, 
+        'p_t_glob_emu' : p_t_glob_emu, 'p_t_glob_CMSSW': p_t_glob_CMSSW,
+        'eta_emu'      : eta_emu,      'phi_emu'       : phi_emu, 
+        'eta_CMSSW'    : eta_CMSSW,    'phi_CMSSW'     : phi_CMSSW,
+        'eta_glob_emu' : eta_glob_emu, 'eta_glob_CMSSW': eta_glob_CMSSW, 
+        'phi_glob_emu' : phi_glob_emu, 'phi_glob_CMSSW': phi_glob_CMSSW,
+        'p_t_gen'      : p_t_gen,      'eta_gen'       : eta_gen,     'phi_gen'    : phi_gen,
+        'p_t_gen_eff'  : p_t_gen_eff,  'eta_gen_eff'   : eta_gen_eff, 'phi_gen_eff': phi_gen_eff,
+        'n_cl_emu'     : n_cl_emu,     'n_cl_CMSSW'    : n_cl_CMSSW,
+        'n_cl_emu_matched': n_cl_emu_matched, 'n_cl_simul_matched': n_cl_simul_matched
     }
 
     file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'_'+args.tag+'.json'
@@ -421,38 +433,101 @@ def plotting_json(args):
       print('Json file read in /plots/data')
 
     # Access the data
-    p_t_emu, p_t_CMSSW = plotting_dict['p_t_emu'], plotting_dict['p_t_CMSSW']
-    p_t_glob_emu, p_t_glob_CMSSW = plotting_dict['p_t_glob_emu'], plotting_dict['p_t_glob_CMSSW']
-    eta_emu, phi_emu = plotting_dict['eta_emu'], plotting_dict['phi_emu']
-    eta_CMSSW, phi_CMSSW = plotting_dict['eta_CMSSW'], plotting_dict['phi_CMSSW']
-    eta_glob_emu, eta_glob_CMSSW = plotting_dict['eta_glob_emu'], plotting_dict['eta_glob_CMSSW']
-    phi_glob_emu, phi_glob_CMSSW = plotting_dict['phi_glob_emu'], plotting_dict['phi_glob_CMSSW']
-    p_t_gen, eta_gen, phi_gen = plotting_dict['p_t_gen'], plotting_dict['eta_gen'], plotting_dict['phi_gen']
-    n_cl_emu, n_cl_CMSSW = plotting_dict['n_cl_emu'], plotting_dict['n_cl_CMSSW'] 
+    # p_t_emu, p_t_CMSSW = plotting_dict['p_t_emu'], plotting_dict['p_t_CMSSW']
+    # p_t_glob_emu, p_t_glob_CMSSW = plotting_dict['p_t_glob_emu'], plotting_dict['p_t_glob_CMSSW']
+    # eta_emu, phi_emu = plotting_dict['eta_emu'], plotting_dict['phi_emu']
+    # eta_CMSSW, phi_CMSSW = plotting_dict['eta_CMSSW'], plotting_dict['phi_CMSSW']
+    # eta_glob_emu, eta_glob_CMSSW = plotting_dict['eta_glob_emu'], plotting_dict['eta_glob_CMSSW']
+    # phi_glob_emu, phi_glob_CMSSW = plotting_dict['phi_glob_emu'], plotting_dict['phi_glob_CMSSW']
+    # p_t_gen, eta_gen, phi_gen = plotting_dict['p_t_gen'], plotting_dict['eta_gen'], plotting_dict['phi_gen']
+    # p_t_gen_eff, eta_gen_eff = plotting_dict['p_t_gen_eff'], plotting_dict['eta_gen_eff']
+    # n_cl_emu, n_cl_CMSSW = plotting_dict['n_cl_emu'], plotting_dict['n_cl_CMSSW']
+    # n_cl_emu_matched, n_cl_simul_matched = plotting_dict['n_cl_emu_matched'], plotting_dict['n_cl_simul_matched']
+    rate_emu, rate_sim = plotting_dict['rate_emu'], plotting_dict['rate_sim']
 
-    # distributions
-    comparison_histo(p_t_glob_emu, p_t_glob_CMSSW, args, 'pT',  20, [0, 200 if args.pileup=='PU0' else 100])
-    comparison_histo(eta_glob_emu, eta_glob_CMSSW, args, 'eta', 20, [1.6, 2.8])
-    comparison_histo(phi_glob_emu, phi_glob_CMSSW, args, 'phi', 20, [0, 2.2])
+    # # distributions
+    # comparison_histo(p_t_glob_emu, p_t_glob_CMSSW, args, 'pT',  20, [0, 200 if args.pileup=='PU0' else 100])
+    # comparison_histo(eta_glob_emu, eta_glob_CMSSW, args, 'eta', 20, [1.6, 2.8])
+    # comparison_histo(phi_glob_emu, phi_glob_CMSSW, args, 'phi', 20, [0, 2.2])
 
-    scale_emu, scale_simul = np.divide(p_t_emu, p_t_gen), np.divide(p_t_CMSSW, p_t_gen)
-    scale_emu_eta, scale_simul_eta = np.subtract(eta_emu, eta_gen), np.subtract(eta_CMSSW, eta_gen)
-    scale_emu_phi, scale_simul_phi = np.subtract(phi_emu, phi_gen), np.subtract(phi_CMSSW, phi_gen)
-    comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0.25, 1.25] if args.pileup=='PU0' else [0, 1.6])
-    comparison_histo(scale_emu_eta, scale_simul_eta, args, 'scale_eta', 20, [-0.01, 0.01])
-    comparison_histo(scale_emu_phi, scale_simul_phi, args, 'scale_phi', 20, [-0.02, 0.02])
+    # scale_emu, scale_simul = np.divide(p_t_emu, p_t_gen), np.divide(p_t_CMSSW, p_t_gen)
+    # scale_emu_eta, scale_simul_eta = np.subtract(eta_emu, eta_gen), np.subtract(eta_CMSSW, eta_gen)
+    # scale_emu_phi, scale_simul_phi = np.subtract(phi_emu, phi_gen), np.subtract(phi_CMSSW, phi_gen)
+    # comparison_histo(scale_emu, scale_simul, args, 'scale_pT', 30, [0.25, 1.25] if args.pileup=='PU0' else [0, 1.6])
+    # comparison_histo(scale_emu_eta, scale_simul_eta, args, 'scale_eta', 20, [-0.015, 0.025])
+    # comparison_histo(scale_emu_phi, scale_simul_phi, args, 'scale_phi', 20, [-0.02, 0.02])
 
-    # responses - scale and reoslution
-    compute_responses(p_t_emu, p_t_CMSSW, p_t_gen, args, 'pT', 10, [0, 200 if args.pileup=='PU0' else 100])
-    compute_responses(p_t_emu, p_t_CMSSW, eta_gen, args, 'pT_eta', 10, [1.6,2.8], p_t_gen)
-    compute_responses(eta_emu, eta_CMSSW, eta_gen, args, 'eta', 10, [1.6,2.8])
-    compute_responses(phi_emu, phi_CMSSW, phi_gen, args, 'phi', 10, [0.2,1.8])
-    compute_responses(n_cl_emu, n_cl_CMSSW, p_t_gen, args, 'n_cl_pt',  10, [0, 200 if args.pileup=='PU0' else 100])
-    compute_responses(n_cl_emu, n_cl_CMSSW, eta_gen, args, 'n_cl_eta', 10, [1.6,2.8])
+    # # responses - scale and reoslution
+    # compute_responses(p_t_emu, p_t_CMSSW, p_t_gen, args, 'pT', 10, [0, 200 if args.pileup=='PU0' else 100])
+    # compute_responses(p_t_emu, p_t_CMSSW, eta_gen, args, 'pT_eta', 10, [1.6,2.8], p_t_gen)
+    # compute_responses(eta_emu, eta_CMSSW, eta_gen, args, 'eta', 10, [1.6,2.8])
+    # compute_responses(phi_emu, phi_CMSSW, phi_gen, args, 'phi', 10, [0.2,1.8])
+    # compute_responses(n_cl_emu, n_cl_CMSSW, p_t_gen, args, 'n_cl_pt',  10, [0, 200 if args.pileup=='PU0' else 100])
+    # compute_responses(n_cl_emu, n_cl_CMSSW, eta_gen, args, 'n_cl_eta', 10, [1.6,2.8])
 
-    # cluster shift wrt gen particle
-    histo_2D_position(scale_emu_eta,   scale_emu_phi,   'emulation',  args)
-    histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
+    # # cluster shift wrt gen particle
+    # histo_2D_position(scale_emu_eta,   scale_emu_phi,   'emulation',  args)
+    # histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
+
+    # # turnOns
+    # eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  '1GeV', 20, args)
+    # eff_plots(n_cl_emu_matched, n_cl_simul_matched, eta_gen_eff, 'eta', '1GeV', 10, args)
+
+    # rates
+    plot_rate(rate_emu, rate_sim, args)
+
+def plot_rate(rate_emu, rate_sim, args):
+    plt.style.use(mplhep.style.CMS)
+    # (bin_edges[1:] + bin_edges[:-1])/2
+
+    pT_cuts = [int(pT) for pT in rate_emu.keys()]
+    plt.errorbar(pT_cuts[:-1], list(rate_emu.values())[:-1], yerr=[np.sqrt(rate) for rate in list(rate_emu.values())[:-1]], 
+                 xerr=[(pT_cuts[i+1] - pT_cuts[i])/2 for i in range(len(pT_cuts)-1)], ls='None', lw=2, marker='s', label='emulation') 
+    plt.errorbar(pT_cuts[:-1], list(rate_sim.values())[:-1], yerr=[np.sqrt(rate) for rate in list(rate_sim.values())[:-1]], 
+                 xerr=[(pT_cuts[i+1] - pT_cuts[i])/2 for i in range(len(pT_cuts)-1)], ls='None', lw=2, marker='s', label='simulation') 
+    plt.xlabel(r'$p_{T}^{gen}$ [GeV]')
+    plt.ylabel(r'Rate [kHz]')
+    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    plt.legend()
+    plt.grid()
+    plt.yscale('log')
+    plt.tight_layout()
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_rates_'+args.tag+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_rates_'+args.tag+'.png')
+    plt.clf()
+ 
+def eff_plots(emu, simul, var, variable, thr, nbins, args):
+    compute_efficiency_plots(emu, var, 'emulation', nbins, 40 if variable=='pT' else None)
+    compute_efficiency_plots(simul, var, 'simulation', nbins, 40 if variable=='pT' else None)
+    produce_efficiency_plots(variable, args)
+   
+def compute_rate(clusters, args):
+    """ Compute rate in output of Stage 2, to the L1Trigger """
+    pT_thrs = np.arange(0, 40)
+    clusters = [cl_ev for cl_ev in clusters if cl_ev]
+    n_cl_emu,   n_cl_emu_total   = {pT_thr: 0 for pT_thr in pT_thrs}, 0
+    n_cl_CMSSW, n_cl_CMSSW_total = {pT_thr: 0 for pT_thr in pT_thrs}, 0
+    
+    for cl_ev in clusters:
+      for pT_thr in pT_thrs:
+        n_cl_emu[pT_thr]   += len([cl[2] for cl in cl_ev['emul_cl'] if cl[2]>=pT_thr])
+        n_cl_CMSSW[pT_thr] += len([cl for cl in cl_ev['CMSSW_ev'].cluster.good_cl3d_pt if cl>=pT_thr])
+      n_cl_emu_total   += len(cl_ev['emul_cl'])
+      n_cl_CMSSW_total += len(cl_ev['CMSSW_ev'].cluster.good_cl3d_pt)
+
+    rate_emu = {str(pT_thr): (n_cl_emu[pT_thr] / n_cl_emu_total) * 2340 * 11.245 for pT_thr in pT_thrs} # in kHz
+    rate_sim = {str(pT_thr): (n_cl_CMSSW[pT_thr] / n_cl_CMSSW_total) * 2340 * 11.245 for pT_thr in pT_thrs} # in kHz
+
+    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'_'+args.tag+'.json'
+    if os.path.exists(file_path) and args.simulation:
+        with open(file_path, 'r') as f: data = json.load(f)
+    else: data = {}
+
+    data['rate_emu'] = rate_emu
+    data['rate_sim'] = rate_sim
+    with open(file_path, 'w') as f:
+        json.dump(data, f)
+        print('Json file created in /plots/data')
 
 ## not used ##
 def create_plot_py(objects, ev, args):
