@@ -9,7 +9,7 @@ s2emu_config:
   rOverZBinSize: 64
   kernelWidths: []
   areaNormalizations: []
-  thresholdMaximaParam_a: [1] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
+  thresholdMaximaParam_a: [1.2] #, 4., 6., 10] # [8000, 12000, 16000, 20000] # 400000
   thresholdMaximaParam_b: [0] #, 100, 300, 500] # 2000
   thresholdMaximaParam_c: 0 # -80
   # thresholdMaximaConstants: []
@@ -53,7 +53,7 @@ s2emu_config:
   nColumnsForClustering: 10
 
 particles:
-  base_path: /eos/home-m/mchiusi/s2_emulator/
+  base_path: /data_CMS/cms/mchiusi/ntupleProduction/ # /eos/home-m/mchiusi/s2_emulator/ 
   PU0:
     photons:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
@@ -64,6 +64,9 @@ particles:
     neutrinos:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
       file: NeutrinoGun_PU200_Phase2Fall22DRMiniAOD.root
+    LLPs:
+      tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
+      file: NTuple_HtoPhiPhito4gamma_LLPs_0PU.root # skimmed_LLPs.root
   PU200:
     photons:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple

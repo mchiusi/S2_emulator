@@ -38,6 +38,7 @@ def run_algorithm(config, event, args, result):
     clustering_.runClustering(unpackedTCs, histogram, cl_TriggerCells, readoutFlags, protoClusters)
     cl_properties_.runClusterProperties(protoClusters, readoutFlags, clustersOut)
     if args.plot: result.append(plot.create_plot(histogram, 'clustering', event, args, clustersOut))
+    if args.shape_var: result.append(clustersOut)
     
 if __name__ == '__main__':
     ''' python run_emulator.py -n 2 --pileup PU0 --particles photons '''
@@ -58,6 +59,7 @@ if __name__ == '__main__':
     parser.add_argument('--fit_resp',    action='store_true', help='Extract mean and std from fit (good for outliers)')
     parser.add_argument('--eff_rms',     action='store_true', help='Extract mean and std from selecting the shorted interval containing 68& events')
     parser.add_argument('--rate',        action='store_true', help='Compute the cluster rate using neutrino gun to L1T')
+    parser.add_argument('--shape_var',   action='store_true', help='Plot histograms containing shape variables')
     args = parser.parse_args()
 
     if args.plot_json: plot.plotting_json(args); sys.exit()
@@ -69,7 +71,7 @@ if __name__ == '__main__':
     xml_data, xml_MB = geometry.read_xml(), geometry.MB_geometry()
     for idx, event in enumerate(events):
       # if event.event not in [185427, 195146, 196557, 201350, 202415, 202695, 37099, 208156, 208324, 209454]: continue # 184363
-      if args.pileup=='PU200' and event.pT_gen < 20: continue
+      # if args.pileup=='PU200' and event.pT_gen < 20: continue
       if idx % 50 == 0: print('Processing event', idx)
       if args.n <= 40: print('Processing event {}. (\u03B7, \u03C6) = {:.2f}, {:.2f}. pT = {:.2f} GeV'.format(
                               event.event, event.eta_gen, event.phi_gen, event.pT_gen))
@@ -84,3 +86,4 @@ if __name__ == '__main__':
     if args.cl_energy   : plot.plot_cluster_energy(results, args)
     if args.simulation  : plot.plot_simul_comparison(results, args)
     if args.rate        : plot.compute_rate(results, args)
+    if args.shape_var   : plot.store_shape_variables(results, args)

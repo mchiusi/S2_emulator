@@ -74,7 +74,7 @@ void HGCalHistoClustering::clusterizer(const HGCalTriggerCellSAPtrCollection& tr
     }
   }
   
-  std::cout << seedCounter << " seeds" << std::endl;
+  // std::cout << seedCounter << " seeds" << std::endl;
   while (seedCounter > 0) {
     for (unsigned int i = 0; i < config_.nFifos(); ++i) {
       if (!latched[i]->dataValid()) {
@@ -378,96 +378,96 @@ void HGCalHistoClustering::triggerCellToCluster(const HGCalTriggerCellSAShrPtrCo
   }
 }
 
-void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clusters, const HGCalHistogramCellSAPtrCollection& histogram ) const
-// void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clusters ) const
-{  
-  HGCalClusterSAShrPtrCollection output;
+// void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clusters, const HGCalHistogramCellSAPtrCollection& histogram ) const
+// // void HGCalHistoClustering::clusterAccumulator( HGCalClusterSAPtrCollection& clusters ) const
+// {  
+//   HGCalClusterSAShrPtrCollection output;
   
-  std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
-  for( auto& x : clusters ){
-    // std::cout << x->sortKey_ << std::endl;
-    auto lKey = std::make_pair( x->sortKey_ , x->index_ );
-    auto lIt = cluster_map.find( lKey );
-    if ( lIt == cluster_map.end() ){
-      HGCalClusterSAShrPtr lVal = make_shared< HGCalCluster >( *x );
-      lVal->X_ = true; // Last entry should always have X_ set
-      output.push_back( lVal );
-      cluster_map[lKey] = lVal;
-    } else {
-      *lIt->second += *x;
-      lIt->second->L_ = x->L_;
-      lIt->second->R_ = x->R_;
-      lIt->second->X_ = x->X_;
-      lIt->second->sortKey_ = x->sortKey_;
-      lIt->second->sortKey2_ = x->sortKey2_;
-    }
+//   std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
+//   for( auto& x : clusters ){
+//     // std::cout << x->sortKey_ << std::endl;
+//     auto lKey = std::make_pair( x->sortKey_ , x->index_ );
+//     auto lIt = cluster_map.find( lKey );
+//     if ( lIt == cluster_map.end() ){
+//       HGCalClusterSAShrPtr lVal = make_shared< HGCalCluster >( *x );
+//       lVal->X_ = true; // Last entry should always have X_ set
+//       output.push_back( lVal );
+//       cluster_map[lKey] = lVal;
+//     } else {
+//       *lIt->second += *x;
+//       lIt->second->L_ = x->L_;
+//       lIt->second->R_ = x->R_;
+//       lIt->second->X_ = x->X_;
+//       lIt->second->sortKey_ = x->sortKey_;
+//       lIt->second->sortKey2_ = x->sortKey2_;
+//     }
     
-  }
+//   }
 
-  // for( auto& x : histogram ){  
-  //   auto lIt = cluster_map.find( std::make_pair( x->sortKey_ , x->index_ ) );
-  //   if ( lIt != cluster_map.end() ) lIt->second->clock_ = x->clock_ + 11;     
-  // }
+//   // for( auto& x : histogram ){  
+//   //   auto lIt = cluster_map.find( std::make_pair( x->sortKey_ , x->index_ ) );
+//   //   if ( lIt != cluster_map.end() ) lIt->second->clock_ = x->clock_ + 11;     
+//   // }
 
-  for( auto& x : output ) x->saturate();
+//   for( auto& x : output ) x->saturate();
  
-  std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
+//   std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
 
-  clusters.clear();
-  clusters.reserve(output.size());
-  for (auto& sharedPtr : output) {
-      clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
-  }
-}
+//   clusters.clear();
+//   clusters.reserve(output.size());
+//   for (auto& sharedPtr : output) {
+//       clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
+//   }
+// }
 
-void HGCalHistoClustering::clusterTree( HGCalClusterSAPtrCollection& clusters ) const
-{
-  HGCalClusterSAShrPtrCollection output;
+// void HGCalHistoClustering::clusterTree( HGCalClusterSAPtrCollection& clusters ) const
+// {
+//   HGCalClusterSAShrPtrCollection output;
 
-  // vvvvvvvvvvvvvvvvvv HACK TO VERIFY VALUES
-  std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
+//   // vvvvvvvvvvvvvvvvvv HACK TO VERIFY VALUES
+//   std::map< std::pair< int , int > , HGCalClusterSAShrPtr > cluster_map;
 
-  for( auto& x : clusters ){
-    auto lKey = std::make_pair( x->sortKey_ , x->sortKey2_ );
-    auto lIt = cluster_map.find( lKey );
-    if ( lIt == cluster_map.end() ){
-      auto lVal = make_shared< HGCalCluster >( *x );
-      lVal->index_ = 0;
-      lVal->X_ = 0;
-      output.push_back( lVal );
-      cluster_map[lKey] = lVal;
-    } else {
-      *lIt->second += *x;
-      lIt->second->clock_ = max( lIt->second->clock_ , x->clock_ );      
-      lIt->second->L_ |= x->L_;
-      lIt->second->R_ |= x->R_;
-      // lIt->second->X_ = x->X_;
-      lIt->second->sortKey_ = x->sortKey_;
-      lIt->second->sortKey2_ = x->sortKey2_;
-    }
-    // if (x->sortKey_==11) {std::cout << "Index " << x->index_ << " energy " << x->e_.value_ << std::endl;}
-  }
-  // ^^^^^^^^^^^^^^^^^ HACK TO VERIFY VALUES
+//   for( auto& x : clusters ){
+//     auto lKey = std::make_pair( x->sortKey_ , x->sortKey2_ );
+//     auto lIt = cluster_map.find( lKey );
+//     if ( lIt == cluster_map.end() ){
+//       auto lVal = make_shared< HGCalCluster >( *x );
+//       lVal->index_ = 0;
+//       lVal->X_ = 0;
+//       output.push_back( lVal );
+//       cluster_map[lKey] = lVal;
+//     } else {
+//       *lIt->second += *x;
+//       lIt->second->clock_ = max( lIt->second->clock_ , x->clock_ );      
+//       lIt->second->L_ |= x->L_;
+//       lIt->second->R_ |= x->R_;
+//       // lIt->second->X_ = x->X_;
+//       lIt->second->sortKey_ = x->sortKey_;
+//       lIt->second->sortKey2_ = x->sortKey2_;
+//     }
+//     // if (x->sortKey_==11) {std::cout << "Index " << x->index_ << " energy " << x->e_.value_ << std::endl;}
+//   }
+//   // ^^^^^^^^^^^^^^^^^ HACK TO VERIFY VALUES
   
-  for( auto& x : output ){
-    x->saturate();
-    x->clock_ += 9;
-  }
+//   for( auto& x : output ){
+//     x->saturate();
+//     x->clock_ += 9;
+//   }
 
-  std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
+//   std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
 
-  HGCalClusterSAShrPtr last = nullptr;
-  for( auto& x : output ){
-    if( last != nullptr and x->clock_ <= last->clock_ ) x->clock_ = last->clock_ + 1;
-    last = x;
-  }
+//   HGCalClusterSAShrPtr last = nullptr;
+//   for( auto& x : output ){
+//     if( last != nullptr and x->clock_ <= last->clock_ ) x->clock_ = last->clock_ + 1;
+//     last = x;
+//   }
 
-  std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
+//   std::sort( output.begin() , output.end() , []( const HGCalClusterSAShrPtr& a , const HGCalClusterSAShrPtr& b ){ return std::make_pair( a->clock_ , a->index_ ) < std::make_pair( b->clock_ , b->index_ ); } );
 
-  clusters.clear();
-  clusters.reserve(output.size());
-  for (auto& sharedPtr : output) {
-      std::cout << sharedPtr->sortKey_ << " final clusters " << sharedPtr->e_.value_ << std::endl;
-      clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
-  }
-}
+//   clusters.clear();
+//   clusters.reserve(output.size());
+//   for (auto& sharedPtr : output) {
+//       std::cout << sharedPtr->sortKey_ << " final clusters " << sharedPtr->e_.value_ << std::endl;
+//       clusters.push_back(std::make_unique<HGCalCluster>(*sharedPtr));
+//   }
+// }

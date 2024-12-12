@@ -61,8 +61,10 @@ class EventData():
         self.event   = gen.event
         self.eta_gen = gen.good_genpart_exeta[0]
         self.phi_gen = gen.good_genpart_exphi[0]
-        self.pT_gen  = self._compute_pt(self.eta_gen,
-                             gen.good_genpart_energy[0])
+        self.pT_gen  = gen.good_genpart_pt[0]
+        self.en_gen  = gen.good_genpart_energy[0]
+        # self.displ_T = gen.good_displacement_vtx[0]
+        # self.n_gamma = gen.good_n_unconverted_gens
 
         self.data_packer = None
         self.LSB = 1/1000 # 1000 keV
@@ -211,7 +213,8 @@ def provide_events(n, particles, PU):
     ]
 
     branches_gen = [
-        'event', 'good_genpart_exeta', 'good_genpart_exphi', 'good_genpart_energy'
+        'event', 'good_genpart_exeta', 'good_genpart_exphi', 'good_genpart_pt', 
+        'good_genpart_energy', # 'good_n_unconverted_gens', 'good_displacement_vtx'
     ]
 
     branches_cl  = [
@@ -224,6 +227,9 @@ def provide_events(n, particles, PU):
     for ev in range(n):
       data = tree.arrays(branches_tc, entry_start=ev, entry_stop=ev+1, library='ak')
       data_gen = tree.arrays(branches_gen, entry_start=ev, entry_stop=ev+1, library='ak')[0]
+      # print(data_gen.event)
+      # printProgressBar(ev+1, n, prefix='Reading '+str(n)+' events from ROOT file:', suffix='Complete', length=50)
+      # if data_gen.event != 55656: continue
       data_cl  = tree.arrays(branches_cl,  entry_start=ev, entry_stop=ev+1, library='ak')[0]
       events_ds.append(provide_event(data, data_gen, data_cl))
       printProgressBar(ev+1, n, prefix='Reading '+str(n)+' events from ROOT file:', suffix='Complete', length=50)

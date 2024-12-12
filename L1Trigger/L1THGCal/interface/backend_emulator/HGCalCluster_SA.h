@@ -52,7 +52,7 @@ namespace l1thgcfirmware {
                   R_(false), 
                   X_(false), 
                   lastFrame_(lastFrame),
-                  dataValid_(dataValid)                  
+                  dataValid_(dataValid),                
                   // Sigma_E_Quotient_(0),
                   // Sigma_E_Fraction_(0),
                   // Mean_z_Quotient_(0),
@@ -71,16 +71,16 @@ namespace l1thgcfirmware {
                   // Sigma_eta_Fraction_(0),
                   // Sigma_roz_Quotient_(0),
                   // Sigma_roz_Fraction_(0),
-                  // FirstLayer_(0),
-                  // LastLayer_(0),
-                  // ShowerLen_(0),
-                  // CoreShowerLen_(0),
+                  FirstLayer_(0),
+                  LastLayer_(0),
+                  ShowerLen_(0),
+                  CoreShowerLen_(0),
                   // E_EM_over_E_Quotient_(0),
-                  // E_EM_over_E_Fraction_(0),
+                  E_EM_over_E_Fraction_(0),
                   // E_EM_core_over_E_EM_Quotient_(0),
-                  // E_EM_core_over_E_EM_Fraction_(0),
+                  E_EM_core_over_E_EM_Fraction_(0),
                   // E_H_early_over_E_Quotient_(0),
-                  // E_H_early_over_E_Fraction_(0)
+                  E_H_early_over_E_Fraction_(0)
                   {}
     HGCalCluster() : HGCalCluster( 0, 0, 0, 0) {};
 
@@ -140,16 +140,16 @@ namespace l1thgcfirmware {
     // void set_Sigma_eta_Fraction( unsigned long int Sigma_eta_Fraction ) { Sigma_eta_Fraction_ = Sigma_eta_Fraction; }
     // void set_Sigma_roz_Quotient( unsigned long int Sigma_roz_Quotient ) { Sigma_roz_Quotient_ = Sigma_roz_Quotient; }
     // void set_Sigma_roz_Fraction( unsigned long int Sigma_roz_Fraction ) { Sigma_roz_Fraction_ = Sigma_roz_Fraction; }
-    // void set_FirstLayer( unsigned long int FirstLayer ) { FirstLayer_ = FirstLayer; }
-    // void set_LastLayer( unsigned long int LastLayer ) { LastLayer_ = LastLayer; }
-    // void set_ShowerLen( unsigned long int ShowerLen ) { ShowerLen_ = ShowerLen; }
-    // void set_CoreShowerLen( unsigned long int CoreShowerLen ) { CoreShowerLen_ = CoreShowerLen; }
+    void set_FirstLayer( unsigned long int FirstLayer ) { FirstLayer_ = FirstLayer; }
+    void set_LastLayer( unsigned long int LastLayer ) { LastLayer_ = LastLayer; }
+    void set_ShowerLen( unsigned long int ShowerLen ) { ShowerLen_ = ShowerLen; }
+    void set_CoreShowerLen( unsigned long int CoreShowerLen ) { CoreShowerLen_ = CoreShowerLen; }
     // void set_E_EM_over_E_Quotient( unsigned long int E_EM_over_E_Quotient ) { E_EM_over_E_Quotient_ = E_EM_over_E_Quotient; }
-    // void set_E_EM_over_E_Fraction( unsigned long int E_EM_over_E_Fraction ) { E_EM_over_E_Fraction_ = E_EM_over_E_Fraction; }
+    void set_E_EM_over_E_Fraction( unsigned long int E_EM_over_E_Fraction ) { E_EM_over_E_Fraction_ = E_EM_over_E_Fraction; }
     // void set_E_EM_core_over_E_EM_Quotient( unsigned long int E_EM_core_over_E_EM_Quotient ) { E_EM_core_over_E_EM_Quotient_ = E_EM_core_over_E_EM_Quotient; }
-    // void set_E_EM_core_over_E_EM_Fraction( unsigned long int E_EM_core_over_E_EM_Fraction ) { E_EM_core_over_E_EM_Fraction_ = E_EM_core_over_E_EM_Fraction; }
+    void set_E_EM_core_over_E_EM_Fraction( unsigned long int E_EM_core_over_E_EM_Fraction ) { E_EM_core_over_E_EM_Fraction_ = E_EM_core_over_E_EM_Fraction; }
     // void set_E_H_early_over_E_Quotient( unsigned long int E_H_early_over_E_Quotient ) { E_H_early_over_E_Quotient_ = E_H_early_over_E_Quotient; }
-    // void set_E_H_early_over_E_Fraction( unsigned long int E_H_early_over_E_Fraction ) { E_H_early_over_E_Fraction_ = E_H_early_over_E_Fraction; }
+    void set_E_H_early_over_E_Fraction( unsigned long int E_H_early_over_E_Fraction ) { E_H_early_over_E_Fraction_ = E_H_early_over_E_Fraction; }
 
     // Getters
     unsigned int clock() const { return clock_; }
@@ -195,16 +195,16 @@ namespace l1thgcfirmware {
     // unsigned long int Sigma_eta_Fraction() const { return Sigma_eta_Fraction_; }
     // unsigned long int Sigma_roz_Quotient() const { return Sigma_roz_Quotient_; }
     // unsigned long int Sigma_roz_Fraction() const { return Sigma_roz_Fraction_; }
-    // unsigned long int FirstLayer() const { return FirstLayer_; }
-    // unsigned long int LastLayer() const { return LastLayer_; }
-    // unsigned long int ShowerLen() const { return ShowerLen_; }
-    // unsigned long int CoreShowerLen() const { return CoreShowerLen_; }
+    unsigned long int FirstLayer() const { return FirstLayer_; }
+    unsigned long int LastLayer() const { return LastLayer_; }
+    unsigned long int ShowerLen() const { return ShowerLen_; }
+    unsigned long int CoreShowerLen() const { return CoreShowerLen_; }
     // unsigned long int E_EM_over_E_Quotient() const { return E_EM_over_E_Quotient_; }
-    // unsigned long int E_EM_over_E_Fraction() const { return E_EM_over_E_Fraction_; }
+    unsigned long int E_EM_over_E_Fraction() const { return E_EM_over_E_Fraction_; }
     // unsigned long int E_EM_core_over_E_EM_Quotient() const { return E_EM_core_over_E_EM_Quotient_; }
-    // unsigned long int E_EM_core_over_E_EM_Fraction() const { return E_EM_core_over_E_EM_Fraction_; }
+    unsigned long int E_EM_core_over_E_EM_Fraction() const { return E_EM_core_over_E_EM_Fraction_; }
     // unsigned long int E_H_early_over_E_Quotient() const { return E_H_early_over_E_Quotient_; }
-    // unsigned long int E_H_early_over_E_Fraction() const { return E_H_early_over_E_Fraction_; }
+    unsigned long int E_H_early_over_E_Fraction() const { return E_H_early_over_E_Fraction_; }
 
     // Operators
     const HGCalCluster& operator+=(const HGCalCluster& hc);
@@ -265,16 +265,16 @@ namespace l1thgcfirmware {
     // unsigned long int Sigma_eta_Fraction_;
     // unsigned long int Sigma_roz_Quotient_;
     // unsigned long int Sigma_roz_Fraction_;
-    // unsigned long int FirstLayer_;
-    // unsigned long int LastLayer_;
-    // unsigned long int ShowerLen_;
-    // unsigned long int CoreShowerLen_;
+    unsigned long int FirstLayer_;
+    unsigned long int LastLayer_;
+    unsigned long int ShowerLen_;
+    unsigned long int CoreShowerLen_;
     // unsigned long int E_EM_over_E_Quotient_;
-    // unsigned long int E_EM_over_E_Fraction_;
+    unsigned long int E_EM_over_E_Fraction_;
     // unsigned long int E_EM_core_over_E_EM_Quotient_;
-    // unsigned long int E_EM_core_over_E_EM_Fraction_;
+    unsigned long int E_EM_core_over_E_EM_Fraction_;
     // unsigned long int E_H_early_over_E_Quotient_;
-    // unsigned long int E_H_early_over_E_Fraction_;
+    unsigned long int E_H_early_over_E_Fraction_;
 
 
   };

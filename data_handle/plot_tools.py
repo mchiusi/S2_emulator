@@ -95,7 +95,7 @@ def create_heatmap(heatmap, gen, title, markers=[], args={}):
     plt.scatter(23+int(124*gen.phi_gen/np.pi), (np.tan(2*np.arctan(np.exp(-gen.eta_gen)))/gen.LSB_r_z-440)/64, 
                 color='red', marker='x', s=50)
     add_markers(markers, title)
-    plt.title(f'{title} - Event {gen.event} \n pT:{gen.pT_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f}'.replace('_', ' '))
+    plt.title(f'{title} - Event {gen.event} E:{gen.en_gen:.0f} GeV, \u03B7:{gen.eta_gen:.2f}, \u03C6:{gen.phi_gen:.2f} \n  N_unconverted {gen.n_gamma}, lateral displacement {gen.displ_T:.2f} cm'.replace('_', ' '))
     plt.grid()
     hgcal_limits(gen)
     plt.savefig(f'plots/single_events/{args.particles}_{args.pileup}_{gen.event}_{title}.pdf')
@@ -150,12 +150,12 @@ def produce_efficiency_plots(variable, args):
     plt.style.use(mplhep.style.CMS)
     plt.xlabel('identified seeds' if variable=='thr' else r'$p_{T}$ [GeV]' if variable=='pT' else r'$\eta$')
     plt.ylabel('Counts' if variable=='thr' else 'Efficiency')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
 
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+variable+'.png')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+args.tag+'_'+variable+'.pdf')
+    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+args.tag+'_'+variable+'.png')
     plt.clf()
 
 def plot_seeds(seeds, args):
@@ -228,7 +228,7 @@ def fit_response(data, bin_width = 0.05):
     if abs(std)/mean>0.5: print(data)
     return abs(std)/mean, np.sqrt(pcov[2, 2])/mean
 
-def effrms(resp_bin, c=0.68):
+def effrms(resp_bin, c=0.95):
     """ Compute half-width of the shortest interval (min std)
     containing a fraction 'c' of items """
     resp_bin = np.sort(resp_bin, kind="mergesort")
@@ -252,24 +252,100 @@ def histo_2D_position(x_data, y_data, var, args, bins=(20,20), cmap=white_viridi
     plt.style.use(mplhep.style.CMS)
     plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
     plt.colorbar()
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.ylabel(r'$\phi^{emulation}-\phi^{gen}$'  if var=='emulation' else r'$\phi^{emulation}-\phi^{gen}$')
     plt.xlabel(r'$\eta^{simulation}-\eta^{gen}$' if var=='emulation' else r'$\eta^{simulation}-\eta^{gen}$')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.pdf')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.png')
     plt.clf()
 
-def comparison_histo(emu, simul, args, var, bin_n, range_):
+def load_json(filename):
+    if os.path.exists(filename):
+        with open(filename, 'r') as f:
+            return json.load(f)
+    else:
+        return {}
+
+def save_json(filename, data):
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=4)
+
+def store_shape_variables(clusters, args):
+    data_cl = {
+        'n_tc': [],
+        'cluster_energy': [],
+        'cluster_em_energy': [],
+        'e_em_core_': [],
+        'e_h_early_': [],
+        'FirstLayer': [],
+        'LastLayer': [],
+        'ShowerLen': [],
+        'CoreShowerLen': [],
+        'E_EM_over_E_Fraction': [],
+        'E_EM_core_over_E_EM_Fraction': [],
+        'E_H_early_over_E_Fraction': []
+    }
+    
+    for event_clusters in clusters:
+        for cluster in event_clusters:
+            data_cl['cluster_energy'].append(cluster.e_.value_*1/1000)
+            data_cl['cluster_em_energy'].append(cluster.e_em_.value_*1/1000)
+            data_cl['e_em_core_'].append(cluster.e_em_core_.value_*1/1000)
+            data_cl['e_h_early_'].append(cluster.e_h_early_.value_*1/1000)
+            data_cl['n_tc'].append(cluster.n_tc().value_)
+            data_cl['FirstLayer'].append(cluster.FirstLayer())
+            data_cl['LastLayer'].append(cluster.LastLayer())
+            data_cl['ShowerLen'].append(cluster.ShowerLen())
+            data_cl['CoreShowerLen'].append(cluster.CoreShowerLen())
+            data_cl['E_EM_over_E_Fraction'].append(cluster.e_em_.value_ / cluster.e_.value_ if cluster.e_.value_ else 0)
+            data_cl['E_EM_core_over_E_EM_Fraction'].append(cluster.e_em_core_.value_ / cluster.e_em_.value_ if cluster.e_em_.value_ else 0)
+            data_cl['E_H_early_over_E_Fraction'].append(cluster.e_h_early_.value_ / cluster.e_.value_ if cluster.e_.value_ else 0)
+
+    filename = 'plots/data/shape_variables.json'
+    particle_data = load_json(filename)
+
+    if args.particles not in particle_data:
+        particle_data[args.particles] = {}
+
+    for var in data_cl.keys():
+        particle_data[args.particles][var] = data_cl[var]
+
+    save_json(filename, particle_data)
+    plot_shape_variables(args)
+
+def plot_shape_variables(args, bin_n=20):
+    filename = 'plots/data/shape_variables.json'
+    particle_data = load_json(filename)
+        
+    bin_ranges = {
+        'n_tc': (0, 150), 'cluster_energy': (0, 150), 'cluster_em_energy': (0, 150),
+        'e_em_core_': (0, 50), 'e_h_early_': (0, 50),
+        'FirstLayer': (1, 36), 'LastLayer': (1, 36),
+        'ShowerLen': (1, 36), 'CoreShowerLen': (1, 36),
+        'E_EM_over_E_Fraction': (0, 1),
+        'E_EM_core_over_E_EM_Fraction': (0, 1),
+        'E_H_early_over_E_Fraction': (0, 1)
+    }
+
+    particles = list(particle_data.keys())
+    for var in particle_data[particles[0]].keys():
+        part1 = particle_data[particles[0]][var]
+        part2 = particle_data[particles[2]][var]
+        range_ = bin_ranges[var]
+        comparison_histo(part1, part2, args, var, bin_n, range_, (particles[0], particles[2]))
+
+
+def comparison_histo(emu, simul, args, var, bin_n, range_, label_=('emulation', 'simulation')):
     plt.style.use(mplhep.style.CMS)
     bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
-    plt.hist(emu,   bins=bin_edges, alpha=.8, label='emulation')
-    plt.hist(simul, bins=bin_edges, alpha=.8, label='simulation')
+    plt.hist(emu,   bins=bin_edges, alpha=.8, label=label_[0])
+    plt.hist(simul, bins=bin_edges, alpha=.8, label=label_[1])
     plt.legend()
     plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if var=='scale_pT' else r'$\phi^{cluster}-\phi^{gen}$' if var=='scale_phi' else \
                r'$\eta^{cluster}-\eta^{gen}$' if var=='scale_eta' else r'$p_{T}^{cluster}$ [GeV]' if var=='pT' else \
-               r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$')
+               r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$' if var=='pT' else var)
     plt.ylabel('Counts')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     if (var=='pT' or var=='eta' or var=='phi') and args.pileup=='PU200': plt.yscale('log')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.pdf')
     plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.png')
@@ -324,7 +400,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
     plt.ylabel(r'$\phi^{cluster}-\phi^{gen}$' if var=='phi' else r'$\eta^{cluster}-\eta^{gen}$' if var=='eta' else \
                r'$<cluster>$' if var=='n_cl_pt' or var=='n_cl_eta' else r'$p_{T}^{cluster}/p_{T}^{gen}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' or var=='n_cl_pt' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
     plt.tight_layout()
@@ -341,7 +417,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
                  xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='simulation') 
     plt.ylabel(r'$\sigma^{cluster}/\mu^{cluster}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
     plt.ylim(bottom=0)
@@ -473,7 +549,7 @@ def plotting_json(args):
     histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
 
     # turnOns
-    eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  '1GeV', 20, args)
+    eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  '1GeV', 30, args)
     eff_plots(n_cl_emu_matched, n_cl_simul_matched, eta_gen_eff, 'eta', '1GeV', 10, args)
 
 def plot_rate(rate_emu, rate_sim, args):
@@ -483,9 +559,9 @@ def plot_rate(rate_emu, rate_sim, args):
                  xerr=[(pT_cuts[i+1] - pT_cuts[i])/2 for i in range(len(pT_cuts)-1)], ls='None', lw=2, marker='s', label='emulation') 
     plt.errorbar(pT_cuts[:-1], list(rate_sim.values())[:-1], yerr=[np.sqrt(rate) for rate in list(rate_sim.values())[:-1]], 
                  xerr=[(pT_cuts[i+1] - pT_cuts[i])/2 for i in range(len(pT_cuts)-1)], ls='None', lw=2, marker='s', label='simulation') 
-    plt.xlabel(r'$p_{T}^{gen}$ [GeV]')
+    plt.xlabel(r'$p_{T}^{cluster}$ [GeV]')
     plt.ylabel(r'Rate [kHz]')
-    mplhep.cms.label('Preliminary', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel='MinimumBias Sample - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
     plt.legend()
     plt.grid()
     plt.yscale('log')
@@ -495,13 +571,13 @@ def plot_rate(rate_emu, rate_sim, args):
     plt.clf()
  
 def eff_plots(emu, simul, var, variable, thr, nbins, args):
-    compute_efficiency_plots(emu, var, 'emulation', nbins, 40 if variable=='pT' else None)
-    compute_efficiency_plots(simul, var, 'simulation', nbins, 40 if variable=='pT' else None)
+    compute_efficiency_plots(emu, var, 'emulation', nbins, 30 if variable=='pT' else None)
+    compute_efficiency_plots(simul, var, 'simulation', nbins, 30 if variable=='pT' else None)
     produce_efficiency_plots(variable, args)
    
 def compute_rate(clusters, args):
     """ Compute rate in output of Stage 2, to the L1Trigger """
-    pT_thrs = np.arange(0, 40)
+    pT_thrs = np.arange(0, 50)
     clusters = [cl_ev for cl_ev in clusters if cl_ev]
     n_cl_emu,   n_cl_emu_total   = {pT_thr: 0 for pT_thr in pT_thrs}, 0
     n_cl_CMSSW, n_cl_CMSSW_total = {pT_thr: 0 for pT_thr in pT_thrs}, 0

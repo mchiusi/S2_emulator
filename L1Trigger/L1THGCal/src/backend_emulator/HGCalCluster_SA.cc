@@ -53,12 +53,6 @@ HGCalClusterSAPtrCollection HGCalCluster::ReadDebugFile( const std::string& aFil
 
 #undef MEMBERS
 
-
-
-
-
-
-
 const HGCalCluster& HGCalCluster::operator+=(const HGCalCluster& c) {
 
   n_tc_ += c.n_tc_;
@@ -114,7 +108,6 @@ const HGCalCluster& HGCalCluster::operator+=(const HGCalCluster& c) {
   return *this;
 }
 
-
 void HGCalCluster::saturate()
 {
   if( n_tc_.value_ > 0x3FF ) n_tc_.value_ = 0x3FF;
@@ -132,4 +125,3 @@ void HGCalCluster::saturate()
   if( wphi2_.value_ > 0xFFFFFFFFFF ) wphi2_.value_ = 0xFFFFFFFFFF;
   if( wroz2_.value_ > 0x3FFFFFFFFFF ) wroz2_.value_ = 0x3FFFFFFFFFF;      
 }
-
