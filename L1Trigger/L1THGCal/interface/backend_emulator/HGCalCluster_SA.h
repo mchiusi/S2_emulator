@@ -71,6 +71,10 @@ namespace l1thgcfirmware {
                   // Sigma_eta_Fraction_(0),
                   // Sigma_roz_Quotient_(0),
                   // Sigma_roz_Fraction_(0),
+                  Sigma_E_(0),
+                  Sigma_z_(0),
+                  Sigma_phi_(0),
+                  Sigma_roz_(0),
                   FirstLayer_(0),
                   LastLayer_(0),
                   ShowerLen_(0),
@@ -140,6 +144,11 @@ namespace l1thgcfirmware {
     // void set_Sigma_eta_Fraction( unsigned long int Sigma_eta_Fraction ) { Sigma_eta_Fraction_ = Sigma_eta_Fraction; }
     // void set_Sigma_roz_Quotient( unsigned long int Sigma_roz_Quotient ) { Sigma_roz_Quotient_ = Sigma_roz_Quotient; }
     // void set_Sigma_roz_Fraction( unsigned long int Sigma_roz_Fraction ) { Sigma_roz_Fraction_ = Sigma_roz_Fraction; }
+    void set_Sigma_E( unsigned long int Sigma_E ) { Sigma_E_ = Sigma_E; } 
+    void set_Sigma_z( unsigned long int Sigma_z ) { Sigma_z_ = Sigma_z; }
+    void set_Sigma_phi( unsigned long int Sigma_phi ) { Sigma_phi_ = Sigma_phi; }
+    void set_Sigma_roz( unsigned long int Sigma_roz ) { Sigma_roz_ = Sigma_roz; }
+
     void set_FirstLayer( unsigned long int FirstLayer ) { FirstLayer_ = FirstLayer; }
     void set_LastLayer( unsigned long int LastLayer ) { LastLayer_ = LastLayer; }
     void set_ShowerLen( unsigned long int ShowerLen ) { ShowerLen_ = ShowerLen; }
@@ -195,6 +204,10 @@ namespace l1thgcfirmware {
     // unsigned long int Sigma_eta_Fraction() const { return Sigma_eta_Fraction_; }
     // unsigned long int Sigma_roz_Quotient() const { return Sigma_roz_Quotient_; }
     // unsigned long int Sigma_roz_Fraction() const { return Sigma_roz_Fraction_; }
+    unsigned long int Sigma_E() const { return Sigma_E_; }
+    unsigned long int Sigma_z() const { return Sigma_z_; }
+    unsigned long int Sigma_phi() const { return Sigma_phi_; }
+    unsigned long int Sigma_roz() const { return Sigma_roz_; }
     unsigned long int FirstLayer() const { return FirstLayer_; }
     unsigned long int LastLayer() const { return LastLayer_; }
     unsigned long int ShowerLen() const { return ShowerLen_; }
@@ -231,9 +244,11 @@ namespace l1thgcfirmware {
     binary n_tc_w_;
     binary w2_;
     binary wz_;
+    // binary weta_;
     binary wphi_;
     binary wroz_;
     binary wz2_;
+    // binary weta2_;
     binary wphi2_;
     binary wroz2_;
     unsigned long int layerbits_;
@@ -265,6 +280,11 @@ namespace l1thgcfirmware {
     // unsigned long int Sigma_eta_Fraction_;
     // unsigned long int Sigma_roz_Quotient_;
     // unsigned long int Sigma_roz_Fraction_;
+    unsigned long int Sigma_E_;
+    unsigned long int Sigma_z_;
+    unsigned long int Sigma_phi_;
+    unsigned long int Sigma_roz_;
+
     unsigned long int FirstLayer_;
     unsigned long int LastLayer_;
     unsigned long int ShowerLen_;

@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser(description='Stage-2 Emulator Parameters')
     parser.add_argument('-n',          type=int, default=1,         help='Provide the number of events')
-    parser.add_argument('--particles', type=str, default='photons', help='Choose the particle sample')
+    parser.add_argument('--particles', type=str, default='photons', help='Choose the particle sample. For two particles, use a comma (e.g., "photons,pions").')
     parser.add_argument('--pileup',    type=str, default='PU0',     help='Choose the pileup - PU0 or PU200')
     parser.add_argument('--tag',       type=str, default='',        help='Name to make unique json files')
     parser.add_argument('--plot',        action='store_true', help='Create plots')
@@ -55,7 +55,8 @@ if __name__ == '__main__':
     parser.add_argument('--thr_seed',    action='store_true', help='Create efficiency plots post seeding')
     parser.add_argument('--cl_energy',   action='store_true', help='Create plot of gen_pt vs recontructed energy')
     parser.add_argument('--simulation',  action='store_true', help='Create plot comparing CMSSW simulated clusters w/ emulator')
-    parser.add_argument('--plot_json',   action='store_true', help='Not process data, just plot json in plots/data')
+    parser.add_argument('--plot_json',   action='store_true', help='Not process data, just plot json in plots/data for performance')
+    parser.add_argument('--plot_shape',  action='store_true', help='Not process data, just plot json in plots/data for shape variables')
     parser.add_argument('--fit_resp',    action='store_true', help='Extract mean and std from fit (good for outliers)')
     parser.add_argument('--eff_rms',     action='store_true', help='Extract mean and std from selecting the shorted interval containing 68& events')
     parser.add_argument('--rate',        action='store_true', help='Compute the cluster rate using neutrino gun to L1T')
@@ -63,6 +64,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     if args.plot_json: plot.plotting_json(args); sys.exit()
+    if args.plot_shape: plot.plot_shape_variables(args); sys.exit()
     params = tool.define_map()
     config = l1thgcfirmware.ClusterAlgoConfig(**params)
 
@@ -85,5 +87,5 @@ if __name__ == '__main__':
     if args.thr_seed    : plot.plot_seeds(results, args)
     if args.cl_energy   : plot.plot_cluster_energy(results, args)
     if args.simulation  : plot.plot_simul_comparison(results, args)
-    if args.rate        : plot.compute_rate(results, args)
     if args.shape_var   : plot.store_shape_variables(results, args)
+    if args.rate        : plot.compute_rate(results, args)
