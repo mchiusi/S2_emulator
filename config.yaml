@@ -66,7 +66,7 @@ particles:
       file: NeutrinoGun_PU200_Phase2Fall22DRMiniAOD.root
     LLPs:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple
-      file: NTuple_HtoPhiPhito4gamma_LLPs_0PU.root # skimmed_LLPs.root
+      file: NTuple_HtoPhiPhito4gamma_LLPs_0PU_emulator181024.root # skimmed_LLPs.root
   PU200:
     photons:
       tree: l1tHGCalTriggerNtuplizer/HGCalTriggerNtuple

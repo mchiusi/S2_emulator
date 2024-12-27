@@ -150,12 +150,12 @@ def produce_efficiency_plots(variable, args):
     plt.style.use(mplhep.style.CMS)
     plt.xlabel('identified seeds' if variable=='thr' else r'$p_{T}$ [GeV]' if variable=='pT' else r'$\eta$')
     plt.ylabel('Counts' if variable=='thr' else 'Efficiency')
-    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles)
     plt.legend()
     plt.grid()
 
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+args.tag+'_'+variable+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_efficiency_'+args.tag+'_'+variable+'.png')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_efficiency_'+args.tag+'_'+variable+'.pdf')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_efficiency_'+args.tag+'_'+variable+'.png')
     plt.clf()
 
 def plot_seeds(seeds, args):
@@ -252,11 +252,11 @@ def histo_2D_position(x_data, y_data, var, args, bins=(20,20), cmap=white_viridi
     plt.style.use(mplhep.style.CMS)
     plt.hist2d(x_data, y_data, bins=bins, cmap=cmap)
     plt.colorbar()
-    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles)
     plt.ylabel(r'$\phi^{emulation}-\phi^{gen}$'  if var=='emulation' else r'$\phi^{emulation}-\phi^{gen}$')
     plt.xlabel(r'$\eta^{simulation}-\eta^{gen}$' if var=='emulation' else r'$\eta^{simulation}-\eta^{gen}$')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.png')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.pdf')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_histogram2D_eta_phi_'+var+'_'+args.tag+'.png')
     plt.clf()
 
 def load_json(filename):
@@ -283,7 +283,11 @@ def store_shape_variables(clusters, args):
         'CoreShowerLen': [],
         'E_EM_over_E_Fraction': [],
         'E_EM_core_over_E_EM_Fraction': [],
-        'E_H_early_over_E_Fraction': []
+        'E_H_early_over_E_Fraction': [],
+        'Sigma_E': [],
+        'Sigma_z': [],
+        'Sigma_phi': [],
+        'Sigma_roz': []
     }
     
     for event_clusters in clusters:
@@ -300,8 +304,12 @@ def store_shape_variables(clusters, args):
             data_cl['E_EM_over_E_Fraction'].append(cluster.e_em_.value_ / cluster.e_.value_ if cluster.e_.value_ else 0)
             data_cl['E_EM_core_over_E_EM_Fraction'].append(cluster.e_em_core_.value_ / cluster.e_em_.value_ if cluster.e_em_.value_ else 0)
             data_cl['E_H_early_over_E_Fraction'].append(cluster.e_h_early_.value_ / cluster.e_.value_ if cluster.e_.value_ else 0)
+            data_cl['Sigma_E'].append(cluster.Sigma_E())
+            data_cl['Sigma_z'].append(cluster.Sigma_z())
+            data_cl['Sigma_phi'].append(cluster.Sigma_phi())
+            data_cl['Sigma_roz'].append(cluster.Sigma_roz())
 
-    filename = 'plots/data/shape_variables.json'
+    filename = 'plots/data/shape_variables_LLPs_photons.json'
     particle_data = load_json(filename)
 
     if args.particles not in particle_data:
@@ -311,10 +319,9 @@ def store_shape_variables(clusters, args):
         particle_data[args.particles][var] = data_cl[var]
 
     save_json(filename, particle_data)
-    plot_shape_variables(args)
+    plot_shape_variables(args, filename)
 
-def plot_shape_variables(args, bin_n=20):
-    filename = 'plots/data/shape_variables.json'
+def plot_shape_variables(args, filename='plots/data/shape_variables.json', bin_n=20):
     particle_data = load_json(filename)
         
     bin_ranges = {
@@ -324,16 +331,17 @@ def plot_shape_variables(args, bin_n=20):
         'ShowerLen': (1, 36), 'CoreShowerLen': (1, 36),
         'E_EM_over_E_Fraction': (0, 1),
         'E_EM_core_over_E_EM_Fraction': (0, 1),
-        'E_H_early_over_E_Fraction': (0, 1)
+        'E_H_early_over_E_Fraction': (0, 1),
+        'Sigma_E': (0, 30), 'Sigma_z': (0, 40),
+        'Sigma_phi': (0, 70), 'Sigma_roz': (0, 60)
     }
 
     particles = list(particle_data.keys())
     for var in particle_data[particles[0]].keys():
         part1 = particle_data[particles[0]][var]
-        part2 = particle_data[particles[2]][var]
+        part2 = particle_data[particles[1]][var]
         range_ = bin_ranges[var]
-        comparison_histo(part1, part2, args, var, bin_n, range_, (particles[0], particles[2]))
-
+        comparison_histo(part1, part2, args, var, bin_n, range_, (particles[0], particles[1]))
 
 def comparison_histo(emu, simul, args, var, bin_n, range_, label_=('emulation', 'simulation')):
     plt.style.use(mplhep.style.CMS)
@@ -343,26 +351,27 @@ def comparison_histo(emu, simul, args, var, bin_n, range_, label_=('emulation', 
     plt.legend()
     plt.xlabel(r'$p_{T}^{cluster}/p_{T}^{gen}$' if var=='scale_pT' else r'$\phi^{cluster}-\phi^{gen}$' if var=='scale_phi' else \
                r'$\eta^{cluster}-\eta^{gen}$' if var=='scale_eta' else r'$p_{T}^{cluster}$ [GeV]' if var=='pT' else \
-               r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$' if var=='pT' else var)
+               r'$\phi^{cluster}$' if var=='phi' else r'$|\eta^{cluster}|$' if var=='eta' else var)
     plt.ylabel('Counts')
-    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles)
     if (var=='pT' or var=='eta' or var=='phi') and args.pileup=='PU200': plt.yscale('log')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.png')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.pdf')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_'+var+'_'+args.tag+'_distribution_histo.png')
     plt.clf()
 
-def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[]):
+def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[], gen_2=[], label_=('emulation', 'simulation')):
     bin_edges = np.linspace(range_[0], range_[1], num=bin_n+1)
-    indices = np.digitize(gen, bin_edges) - 1
+    indices, indices_2 = (np.digitize(gen, bin_edges) - 1), (np.digitize(gen_2, bin_edges) - 1)
+    if not gen_2: indices_2, gen_2 = indices, gen
 
     resp_emu, err_resp_emu, resol_emu, err_resol_emu = {}, {}, {}, {}
     resp_simul, err_resp_simul, resol_simul, err_resol_simul = {}, {}, {}, {}
     for index in range(bin_n):
-      bin_idx = np.where(indices == index)[0]
-      resp_bin_emu, resp_bin_simul   = ([emu[i]/gen[i] for i in bin_idx], [simul[i]/gen[i] for i in bin_idx]) if var=='pT' else \
-                                       ([emu[i]/pt[i]  for i in bin_idx], [simul[i]/pt[i]  for i in bin_idx]) if var=='pT_eta' else \
-                                       ([emu[i] for i in bin_idx], [simul[i] for i in bin_idx]) if var=='n_cl_pt' or var=='n_cl_eta' else \
-                                       ([emu[i]-gen[i] for i in bin_idx], [simul[i]-gen[i] for i in bin_idx])
+      bin_idx, bin_idx_2 = np.where(indices == index)[0], np.where(indices_2 == index)[0]
+      resp_bin_emu, resp_bin_simul   = ([emu[i]/gen[i] for i in bin_idx], [simul[i]/gen_2[i] for i in bin_idx_2]) if var=='pT' else \
+                                       ([emu[i]/pt[i]  for i in bin_idx], [simul[i]/pt[i]  for i in bin_idx_2]) if var=='pT_eta' else \
+                                       ([emu[i] for i in bin_idx], [simul[i] for i in bin_idx_2]) if var=='n_cl_pt' or var=='n_cl_eta' else \
+                                       ([emu[i]-gen[i] for i in bin_idx], [simul[i]-gen_2[i] for i in bin_idx_2])
 
       resp_emu[index]       = np.mean(resp_bin_emu) if len(resp_bin_emu)>0 else 0
       err_resp_emu[index]   = np.std(resp_bin_emu)/np.sqrt(len(resp_bin_emu)) if len(resp_bin_emu)>0 else 0
@@ -373,7 +382,7 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
       err_resol_emu[index]   = np.std(resp_bin_emu)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_emu)) if len(resp_bin_emu)>1 else 0
       resol_simul[index]     = np.std(resp_bin_simul)/np.mean(resp_bin_simul) if len(resp_bin_simul)>1 else 0
       err_resol_simul[index] = np.std(resp_bin_simul)/(np.sqrt(2*len(resp_bin_emu)-2)*np.mean(resp_bin_simul)) if len(resp_bin_simul)>1 else 0
-      if var == 'pT_eta': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
+      # if var == 'pT_eta': plot_bin_distribution(resp_bin_emu, resp_bin_simul, var, index, args)
 
       if args.eff_rms and (var == 'pT' or var == 'pT_eta'):
         eff_rms_emu   = effrms(resp_bin_emu) if len(resp_bin_emu)>1 else [0]
@@ -393,37 +402,37 @@ def compute_responses(emu, simul, gen, args, var, bin_n=10, range_=[0,200], pt=[
     plt.style.use(mplhep.style.CMS)
     plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resp_emu.values(), 
                  yerr=np.array(list(zip(err_resp_emu.values(), err_resp_emu.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='emulation') 
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label=label_[0]) 
     plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resp_simul.values(), 
                  yerr=np.array(list(zip(err_resp_simul.values(), err_resp_simul.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='simulation') 
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label=label_[1]) 
     plt.ylabel(r'$\phi^{cluster}-\phi^{gen}$' if var=='phi' else r'$\eta^{cluster}-\eta^{gen}$' if var=='eta' else \
                r'$<cluster>$' if var=='n_cl_pt' or var=='n_cl_eta' else r'$p_{T}^{cluster}/p_{T}^{gen}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' or var=='n_cl_pt' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
-    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles)
     plt.legend()
     plt.grid()
     plt.tight_layout()
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'_'+args.tag+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_response_'+var+'_'+args.tag+'.png')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_response_'+var+'_'+args.tag+'.pdf')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_response_'+var+'_'+args.tag+'.png')
     plt.clf()
 
     if var=='n_cl_pt' or var=='n_cl_eta' or var=='eta' or var=='phi': return
     plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resol_emu.values(), 
                  yerr=np.array(list(zip(err_resol_emu.values(), err_resol_emu.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='emulation') 
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label=label_[0]) 
     plt.errorbar((bin_edges[1:] + bin_edges[:-1])/2, resol_simul.values(), 
                  yerr=np.array(list(zip(err_resol_simul.values(), err_resol_simul.values()))).T,
-                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label='simulation') 
+                 xerr=(bin_edges[1] - bin_edges[0])/2, ls='None', lw=2, marker='s', label=label_[1]) 
     plt.ylabel(r'$\sigma^{cluster}/\mu^{cluster}$')
     plt.xlabel(r'$p_{T}^{gen}$ [GeV]' if var=='pT' else r'$\phi^{gen}$' if var=='phi' else r'$|\eta^{gen}|$')
-    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles+' - '+str(cfg['thresholdMaximaParam_a'][0])+'GeV')
+    mplhep.cms.label('Private work', data=True, rlabel=args.pileup+' '+args.particles)
     plt.legend()
     plt.grid()
     plt.ylim(bottom=0)
     plt.tight_layout()
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'_'+args.tag+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_resolution_'+var+'_'+args.tag+'.png')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_resolution_'+var+'_'+args.tag+'.pdf')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_resolution_'+var+'_'+args.tag+'.png')
     plt.clf()
 
 def plot_simul_comparison(clusters, args):
@@ -495,22 +504,15 @@ def plot_simul_comparison(clusters, args):
 
     file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'_'+args.tag+'.json'
     with open(file_path, 'w') as f:
-      json.dump(plotting_dict, f)
+      json.dump(plotting_dict, f, indent=4)
       print('Json file created in /plots/data')
 
     plotting_json(args)
 
-def plotting_json(args):
-    """" Read the json file in plots/data and 
-    plot performance vs simulation """
-    file_path = 'plots/data/clusters_data_'+args.particles+'_'+args.pileup+'_'+args.tag+'.json'
-    with open(file_path, 'r') as f:
-      plotting_dict = json.load(f)
-      print('Json file read in /plots/data')
-
+def process_single_particle(plotting_dict, args):
     if args.rate: 
-       plot_rate(plotting_dict['rate_emu'], plotting_dict['rate_sim'], args)
-       return
+            plot_rate(plotting_dict['rate_emu'], plotting_dict['rate_sim'], args)
+            return
 
     # Access the data
     p_t_emu, p_t_CMSSW = plotting_dict['p_t_emu'], plotting_dict['p_t_CMSSW']
@@ -549,8 +551,62 @@ def plotting_json(args):
     histo_2D_position(scale_simul_eta, scale_simul_phi, 'simulation', args)
 
     # turnOns
-    eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  '1GeV', 30, args)
-    eff_plots(n_cl_emu_matched, n_cl_simul_matched, eta_gen_eff, 'eta', '1GeV', 10, args)
+    eff_plots(n_cl_emu_matched, n_cl_simul_matched, p_t_gen_eff, 'pT',  10, args)
+    eff_plots(n_cl_emu_matched, n_cl_simul_matched, eta_gen_eff, 'eta', 10, args)
+
+def process_multiple_particles(particles, plotting_dicts, args):
+    """Process and plot data for multiple particles."""
+    plotting_dict_1, plotting_dict_2 = plotting_dicts
+
+    p_t_emu_1, p_t_emu_2 = plotting_dict_1['p_t_emu'], plotting_dict_2['p_t_emu']
+    eta_emu_1, eta_emu_2 = plotting_dict_1['eta_emu'], plotting_dict_2['eta_emu']
+    phi_emu_1, phi_emu_2 = plotting_dict_1['phi_emu'], plotting_dict_2['phi_emu']
+
+    p_t_glob_emu_1, p_t_glob_emu_2 = plotting_dict_1['p_t_glob_emu'], plotting_dict_2['p_t_glob_emu']
+    eta_glob_emu_1, eta_glob_emu_2 = plotting_dict_1['eta_glob_emu'], plotting_dict_2['eta_glob_emu']
+    phi_glob_emu_1, phi_glob_emu_2 = plotting_dict_1['phi_glob_emu'], plotting_dict_2['phi_glob_emu']
+
+    p_t_gen_1, p_t_gen_2 = plotting_dict_1['p_t_gen'], plotting_dict_2['p_t_gen']
+    eta_gen_1, eta_gen_2 = plotting_dict_1['eta_gen'], plotting_dict_2['eta_gen']
+    phi_gen_1, phi_gen_2 = plotting_dict_1['phi_gen'], plotting_dict_2['phi_gen']
+    n_cl_emu_1, n_cl_emu_2 = plotting_dict_1['n_cl_emu'], plotting_dict_2['n_cl_emu']
+
+    # distributions
+    comparison_histo(p_t_glob_emu_1, p_t_glob_emu_2, args, 'pT',  20, [0, 200 if args.pileup=='PU0' else 100], (particles[0], particles[1]))
+    comparison_histo(eta_glob_emu_1, eta_glob_emu_2, args, 'eta', 20, [1.6, 2.8], (particles[0], particles[1]))
+    comparison_histo(phi_glob_emu_1, phi_glob_emu_2, args, 'phi', 20, [0, 2.2], (particles[0], particles[1]))
+
+    scale_emu_1, scale_emu_2 = np.divide(p_t_emu_1, p_t_gen_1), np.divide(p_t_emu_2, p_t_gen_2)
+    scale_emu_eta_1, scale_emu_eta_2 = np.subtract(eta_emu_1, eta_gen_1), np.subtract(eta_emu_2, eta_gen_2)
+    scale_emu_phi_1, scale_emu_phi_2 = np.subtract(phi_emu_1, phi_gen_1), np.subtract(phi_emu_2, phi_gen_2)
+    comparison_histo(scale_emu_1, scale_emu_2, args, 'scale_pT', 30, [0.25, 1.25] if args.pileup == 'PU0' else [0, 1.6], (particles[0], particles[1]))
+    comparison_histo(scale_emu_eta_1, scale_emu_eta_2, args, 'scale_eta', 20, [-0.015, 0.025], (particles[0], particles[1]))
+    comparison_histo(scale_emu_phi_1, scale_emu_phi_2, args, 'scale_phi', 20, [-0.02, 0.02], (particles[0], particles[1]))
+
+    compute_responses(p_t_emu_1, p_t_emu_2, p_t_gen_1, args, 'pT', 10, [0, 200 if args.pileup == 'PU0' else 100], gen_2=p_t_gen_2, label_=(particles[0], particles[1]))
+    # compute_responses(p_t_emu_1, p_t_emu_2, eta_gen_1, args, 'pT_eta', 10, [1.6, 2.8], pt=p_t_gen_1, gen_2=p_t_gen_2, label_=(particles[0], particles[1]))
+    compute_responses(eta_emu_1, eta_emu_2, eta_gen_1, args, 'eta', 10, [1.6, 2.8], gen_2=eta_gen_2, label_=(particles[0], particles[1]))
+    compute_responses(phi_emu_1, phi_emu_2, phi_gen_1, args, 'phi', 10, [0.2, 1.8], gen_2=phi_gen_2, label_=(particles[0], particles[1]))
+    compute_responses(n_cl_emu_1, n_cl_emu_2, p_t_gen_1, args, 'n_cl_pt',  10, [0, 200 if args.pileup=='PU0' else 100], gen_2=p_t_gen_2, label_=(particles[0], particles[1]))
+    compute_responses(n_cl_emu_1, n_cl_emu_2, eta_gen_1, args, 'n_cl_eta', 10, [1.6,2.8], gen_2=eta_gen_2, label_=(particles[0], particles[1]))
+
+    eff_plots(plotting_dict_1['n_cl_emu_matched'], plotting_dict_2['n_cl_emu_matched'], plotting_dict_1['p_t_gen_eff'], 'pT', 10, args, (particles[0], particles[1]), plotting_dict_2['p_t_gen_eff'])
+    eff_plots(plotting_dict_1['n_cl_emu_matched'], plotting_dict_2['n_cl_emu_matched'], plotting_dict_1['eta_gen_eff'], 'eta', 10, args, (particles[0], particles[1]), plotting_dict_2['eta_gen_eff'])
+
+def plotting_json(args):
+    """Read the JSON file in plots/data and plot performance vs simulation."""
+    particles = args.particles.split(',')
+
+    if len(particles) > 1:
+        plotting_dicts = [
+            json.load(open(f'plots/data/clusters_data_{particle}_{args.pileup}_{args.tag}.json'))
+            for particle in particles
+        ]
+        process_multiple_particles(particles, plotting_dicts, args)
+    else:
+        # Default behavior for a single particle
+        plotting_dicts = json.load(open(f'plots/data/clusters_data_{args.particles}_{args.pileup}_{args.tag}.json'))
+        process_single_particle(plotting_dicts, args)
 
 def plot_rate(rate_emu, rate_sim, args):
     plt.style.use(mplhep.style.CMS)
@@ -566,13 +622,13 @@ def plot_rate(rate_emu, rate_sim, args):
     plt.grid()
     plt.yscale('log')
     plt.tight_layout()
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_rates_'+args.tag+'.pdf')
-    plt.savefig('plots/'+args.particles+'_'+args.pileup+'_rates_'+args.tag+'.png')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_rates_'+args.tag+'.pdf')
+    plt.savefig('plots/performance/'+args.particles+'_'+args.pileup+'_rates_'+args.tag+'.png')
     plt.clf()
  
-def eff_plots(emu, simul, var, variable, thr, nbins, args):
-    compute_efficiency_plots(emu, var, 'emulation', nbins, 30 if variable=='pT' else None)
-    compute_efficiency_plots(simul, var, 'simulation', nbins, 30 if variable=='pT' else None)
+def eff_plots(emu, simul, var, variable, nbins, args, label_=('emulation', 'simulation'), var2=[]):
+    compute_efficiency_plots(emu, var, label_[0], nbins, 30 if variable=='pT' else None)
+    compute_efficiency_plots(simul, var2 if var2 else var, label_[1], nbins, 30 if variable=='pT' else None)
     produce_efficiency_plots(variable, args)
    
 def compute_rate(clusters, args):
